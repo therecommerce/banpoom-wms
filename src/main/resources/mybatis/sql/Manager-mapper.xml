@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="manager" >
+
+    <select id="selectManagerList" parameterType="hashMap" resultType="ManagerVO">
+        -- selectManagerList
+        SELECT * from
+        (select
+            AES_DECRYPT(UNHEX(T1.account_id),#{aes_key}) AS account_id ,
+            account_name,
+            grade_id ,
+            AES_DECRYPT(UNHEX(account_email),#{aes_key}) AS account_email ,
+            account_tel ,
+            reg_dt
+        FROM TBL_ACCOUNT AS T1
+        WHERE grade_id = 1
+           OR grade_id = 2
+           OR grade_id = 3
+        ) as t101
+        where 1=1
+        <if test="account_name != null and account_name !=''">
+            AND t101.account_name LIKE CONCAT('%',#{account_name},'%')
+        </if>
+        <if test="account_id != null and account_id !=''">
+            AND t101.account_id LIKE CONCAT('%',#{account_id},'%')
+        </if>
+        <if test="account_tel != null and account_tel !=''">
+            AND t101.account_tel LIKE CONCAT('%',#{account_tel},'%')
+        </if>
+        <if test="account_email != null and account_email !=''">
+            AND t101.account_email LIKE CONCAT('%',#{account_email},'%')
+        </if>
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type}
+        </if>
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectListTotal" parameterType="hashmap" resultType="ManagerVO">
+        -- selectListTotal
+        SELECT count(*) from
+        (select
+        AES_DECRYPT(UNHEX(T1.account_id),#{aes_key}) AS account_id ,
+        account_name,
+        grade_id ,
+        AES_DECRYPT(UNHEX(account_email),#{aes_key}) AS account_email ,
+        account_tel ,
+        reg_dt
+        FROM TBL_ACCOUNT AS T1
+        WHERE grade_id = 1
+        OR grade_id = 2
+        OR grade_id = 3
+        ) as t101
+        where 1=1
+        <if test="account_name != null and account_name !=''">
+            AND t101.account_name LIKE CONCAT('%',#{account_name},'%')
+        </if>
+        <if test="account_id != null and account_id !=''">
+            AND t101.account_id LIKE CONCAT('%',#{account_id},'%')
+        </if>
+        <if test="account_tel != null and account_tel !=''">
+            AND t101.account_tel LIKE CONCAT('%',#{account_tel},'%')
+        </if>
+        <if test="account_email != null and account_email !=''">
+            AND t101.account_email LIKE CONCAT('%',#{account_email},'%')
+        </if>
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type}
+        </if>
+    </select>
+
+    <insert id="insertManagerAuth" parameterType="ManagerVO">
+        -- 매니저 권한
+        INSERT INTO TBL_MANAGER_AUTH (
+            account_id,
+            dashboard_access,
+            consign_access,
+            consign_warehouse_access,
+            seller_return_access,
+            consign_product_access,
+            consign_delivery_access,
+            consign_return_access,
+            seller_access,
+            seller_product_access,
+            seller_delivery_access
+        ) VALUES (
+                  HEX(AES_ENCRYPT(#{account_id}, #{aes_key})),
+                  #{dashboard_access},
+                  #{consign_access},
+                  #{consign_warehouse_access},
+                  #{seller_return_access},
+                  #{consign_product_access},
+                  #{consign_delivery_access},
+                  #{consign_return_access},
+                  #{seller_access},
+                  #{seller_product_access},
+                  #{seller_delivery_access}
+        )
+    </insert>
+
+    <insert id="insertAccount" parameterType="ManagerVO">
+        -- 매니저 계정 추가
+        INSERT INTO TBL_ACCOUNT (
+            account_name,
+            account_id,
+            account_pwd,
+            account_tel,
+            reg_dt,
+            account_email,
+            grade_id
+        ) VALUES (
+                #{account_name},
+                HEX(AES_ENCRYPT(#{account_id}, #{aes_key})),
+                HEX(AES_ENCRYPT(#{account_pwd}, #{aes_key})),
+                #{account_tel},
+                NOW(),
+                HEX(AES_ENCRYPT(#{account_email}, #{aes_key})),
+                3
+        )
+    </insert>
+
+    <select id="selectManagerDetail" parameterType="hashmap" resultType="ManagerVO">
+        -- 매니저 상세페이지
+        SELECT
+            AES_DECRYPT(UNHEX(T1.account_id),#{aes_key}) AS account_id,
+            T1.account_name,
+            T1.grade_id ,
+            AES_DECRYPT(UNHEX(T1.account_email),#{aes_key}) AS account_email,
+            T1.account_tel,
+            T1.reg_dt,
+            T2.account_id,
+            T2.dashboard_access,
+            T2.consign_access,
+            T2.consign_warehouse_access,
+            T2.seller_return_access,
+            T2.consign_product_access,
+            T2.consign_delivery_access,
+            T2.consign_return_access,
+            T2.seller_access,
+            T2.seller_product_access,
+            T2.seller_delivery_access,
+            AES_DECRYPT(UNHEX(T1.account_pwd), #{aes_key}) AS account_pwd
+        FROM TBL_ACCOUNT AS T1
+        LEFT JOIN TBL_MANAGER_AUTH AS T2 ON T2.account_id = T1.account_id
+        WHERE (grade_id = 1
+            OR grade_id = 2
+            OR grade_id = 3)
+        AND T1.account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}));
+    </select>
+
+    <update id="updateManagerAuth" parameterType="ManagerVO">
+        -- 매니저 권한 수정
+        UPDATE TBL_MANAGER_AUTH
+        SET
+            dashboard_access = #{dashboard_access} ,
+            consign_access = #{consign_access} ,
+            consign_warehouse_access = #{consign_warehouse_access} ,
+            consign_product_access = #{consign_product_access} ,
+            consign_delivery_access = #{consign_delivery_access} ,
+            consign_return_access = #{consign_return_access} ,
+            seller_access = #{seller_access} ,
+            seller_product_access = #{seller_product_access} ,
+            seller_delivery_access = #{seller_delivery_access} ,
+            seller_return_access = #{seller_return_access}
+        WHERE account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+    </update>
+
+    <update id="updateManagerAccount" parameterType="ManagerVO">
+        UPDATE TBL_ACCOUNT
+        SET
+            account_name = #{account_name},
+            account_pwd = HEX(AES_ENCRYPT(#{account_pwd}, #{aes_key})),
+            account_email = HEX(AES_ENCRYPT(#{account_email}, #{aes_key})),
+            account_tel = #{account_tel}
+        WHERE account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+    </update>
+
+    <select id="selectManagerAuth" parameterType="ManagerVO" resultType="ManagerVO">
+        SELECT
+            account_id ,
+            dashboard_access ,
+            consign_access ,
+            consign_warehouse_access ,
+            consign_product_access ,
+            consign_delivery_access ,
+            consign_return_access ,
+            seller_access ,
+            seller_product_access ,
+            seller_delivery_access ,
+            seller_return_access
+        FROM TBL_MANAGER_AUTH
+        WHERE account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+    </select>
+
+    <delete id="deleteManagerAuth" parameterType="String">
+        -- 매니저 권한 삭제
+        DELETE FROM TBL_MANAGER_AUTH
+        WHERE 1 = 1
+        AND account_id IN
+        <foreach collection="managerList" item="item" index="index" separator="," open="(" close=")">
+            HEX(AES_ENCRYPT(#{item}, #{aes_key}))
+        </foreach>
+    </delete>
+
+    <update id="updateManagerDelete" parameterType="String">
+        UPDATE TBL_ACCOUNT
+        SET
+            grade_id = 5,
+            delete_flag  = 1
+        WHERE 1 = 1
+        AND account_id IN
+        <foreach collection="managerList" item="item" index="index" separator="," open="(" close=")">
+            HEX(AES_ENCRYPT(#{item}, #{aes_key}))
+        </foreach>
+    </update>
+</mapper>

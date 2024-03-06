@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="StartSeller">
+
+    <select id="selectStartSellerBoardList" parameterType="hashmap" resultType="StartSellerVO">
+        SELECT * FROM (SELECT
+            T1.startseller_qna_no ,
+            T1.startseller_qna_title ,
+            T1.startseller_qna_state ,
+            T1.startseller_qna_name ,
+            DATE_FORMAT(T1.startseller_qna_reg_dt, '%Y-%m-%d %H:%m:%s') AS startseller_qna_reg_dt ,
+            startseller_qna_company
+        FROM TBL_STARTSELLER_BOARD AS T1
+        WHERE 1 = 1
+        <if test="startseller_qna_state != null and startseller_qna_state != ''">
+            AND startseller_qna_state LIKE CONCAT('%',#{startseller_qna_state},'%')
+        </if>
+        <if test="startseller_qna_title != null and startseller_qna_title != ''">
+            AND startseller_qna_title LIKE CONCAT('%',#{startseller_qna_title},'%')
+        </if>
+        <if test="startseller_qna_name != null and startseller_qna_name != ''">
+            AND startseller_qna_name LIKE CONCAT('%',#{startseller_qna_name},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            AND (date_format(startseller_qna_reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND date_format(startseller_qna_reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.startseller_qna_no desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectStartSellerBoardTotal" parameterType="hashmap" resultType="Integer">
+        SELECT
+            COUNT(*)
+        FROM TBL_STARTSELLER_BOARD AS T1
+        WHERE 1 = 1
+        <if test="startseller_qna_state != null and startseller_qna_state != ''">
+            AND startseller_qna_state LIKE CONCAT('%',#{startseller_qna_state},'%')
+        </if>
+        <if test="startseller_qna_title != null and startseller_qna_title != ''">
+            AND startseller_qna_title LIKE CONCAT('%',#{startseller_qna_title},'%')
+        </if>
+        <if test="startseller_qna_name != null and startseller_qna_name != ''">
+            AND startseller_qna_name LIKE CONCAT('%',#{startseller_qna_name},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            AND (date_format(startseller_qna_reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND date_format(startseller_qna_reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectStartSellerQnaDetail" parameterType="String" resultType="StartSellerVO">
+        SELECT
+            startseller_qna_no ,
+            startseller_qna_title ,
+            startseller_qna_content ,
+            startseller_qna_company ,
+            startseller_qna_name ,
+            DATE_FORMAT(startseller_qna_reg_dt, '%Y-%m-%d %H:%m:%s') AS startseller_qna_reg_dt ,
+            startseller_qna_email ,
+            startseller_qna_phone ,
+            startseller_qna_answer ,
+            startseller_qna_answerer ,
+            DATE_FORMAT(startseller_qna_answer_dt, '%Y-%m-%d %H:%m:%s') AS startseller_qna_answer_dt ,
+            startseller_qna_state ,
+            (SELECT startseller_qna_no FROM TBL_STARTSELLER_BOARD WHERE startseller_qna_no <![CDATA[<]]> T1.startseller_qna_no ORDER BY startseller_qna_no DESC LIMIT 1) AS previous_qna_no ,
+            (SELECT startseller_qna_title FROM TBL_STARTSELLER_BOARD WHERE startseller_qna_no <![CDATA[<]]> T1.startseller_qna_no ORDER BY startseller_qna_no DESC LIMIT 1) AS previous_qna_title ,
+            (SELECT startseller_qna_no FROM TBL_STARTSELLER_BOARD WHERE startseller_qna_no <![CDATA[>]]> T1.startseller_qna_no ORDER BY startseller_qna_no LIMIT 1) AS next_qna_no ,
+            (SELECT startseller_qna_title FROM TBL_STARTSELLER_BOARD WHERE startseller_qna_no <![CDATA[>]]> T1.startseller_qna_no ORDER BY startseller_qna_no LIMIT 1) AS next_qna_title
+        FROM TBL_STARTSELLER_BOARD AS T1
+        WHERE startseller_qna_no = #{startseller_qna_no}
+    </select>
+
+    <update id="updateStartSellerAnswer" parameterType="StartSellerVO">
+        UPDATE TBL_STARTSELLER_BOARD
+        SET
+            startseller_qna_state = '답변완료',
+            startseller_qna_answer = #{startseller_qna_answer} ,
+            startseller_qna_answer_account_id = #{startseller_qna_answer_account_id} ,
+            startseller_qna_answer_dt = NOW() ,
+            startseller_qna_answerer = #{startseller_qna_answerer}
+        WHERE startseller_qna_no = #{startseller_qna_no};
+    </update>
+
+    <insert id="insertStartSellerAnswerImage" parameterType="StartSellerVO" useGeneratedKeys="true" keyProperty="user_qna_no">
+        INSERT INTO TBL_QNA_Image
+            (startseller_qna_no, file_id, answer_img)
+        VALUES(#{startseller_qna_no}, #{file_id}, 1)
+    </insert>
+
+    <select id="selectStartSellerQuestionImage" parameterType="StartSellerVO" resultType="Integer">
+        SELECT
+            file_id
+        FROM TBL_QNA_Image
+        WHERE 1 = 1
+          AND startseller_qna_no = #{startseller_qna_no}
+          AND question_img = 1
+    </select>
+
+    <select id="selectStartSellerAnswerImage" parameterType="StartSellerVO" resultType="Integer">
+        SELECT
+            file_id
+        FROM TBL_QNA_Image
+        WHERE 1 = 1
+          AND startseller_qna_no = #{startseller_qna_no}
+          AND answer_img = 1
+    </select>
+
+
+
+</mapper>
+
+
+
+
+
+

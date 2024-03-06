@@ -1,0 +1,813 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="calculate">
+
+    <select id="selectCalculateList" resultType="CalculateVO" parameterType="hashmap">
+        --         selectCalculateList
+        SELECT
+            cal_month_no ,
+            DATE_FORMAT(T1.cal_dt, '%Y-%m-10') AS cal_dt,
+            (LAST_DAY(cal_dt - INTERVAL 1 MONTH) + INTERVAL 1 DAY) AS firstDay,
+            LAST_DAY(cal_dt) AS lastDay,
+            SUM(T1.cal_price) AS cal_price_total ,
+            SUM(T1.cal_vprice) AS cal_vprice ,
+            SUM(T1.sell_commission) AS sell_commission ,
+            COUNT(T1.cal_no) as total_product_count ,
+            T1.cal_state ,
+            (SELECT COUNT(DISTINCT tpl.account_id)
+             FROM TBL_CALCULATE_INFO AS tci
+                      LEFT JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id  = tci.product_id
+             WHERE 1 = 1
+               AND tpl.is_keeping = 1
+            ) AS seller_number ,
+            T3.remain_count,
+            T1.cal_vprice AS original_price,
+            cal_id,
+            cal_state,
+            T4.order_product_count,
+            (SELECT IF(COUNT(*) > 0, 3000, 0)
+             FROM TBL_CALCULATE_INFO t1
+                      LEFT JOIN TBL_PRODUCT_LIST t2 ON t1.product_id = t2.product_id
+                      LEFT JOIN TBL_REQUEST_RETURN t3 ON t1.product_id = t2.product_id
+             WHERE 1 = 1
+               AND t1.account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+               AND t2.sell_type = '반품보관'
+               AND t3.is_direct_delivery = 0
+               and t2.account_id = T1.account_id) AS return_collection_cost,
+            IF(T5.sort_type = '기부' OR T5.sort_type = '폐기', 3000, 0) AS offer_management_cost,
+            IF(T3.recovery_dt IS NOT NULL, 2000, 0) AS storage_cost,
+            IF(T1.order_request_id IS NOT NULL ,3000, 0) AS forwarding_cost,
+            IF(T3.recovery_dt IS NOT NULL, 3000, 0) AS recovery_cost
+        FROM TBL_CALCULATE_INFO AS T1
+                 LEFT JOIN TBL_PRODUCT_LIST AS T2 ON T2.product_id = T1.product_id
+                 LEFT JOIN TBL_INVENTORY AS T3 ON T3.product_id = T1.product_id
+                 LEFT JOIN TBL_REQUEST_ORDER AS T4 ON T4.order_request_id = T1.order_request_id
+                 LEFT JOIN TBL_OFFER_MANAGEMENT AS T5 ON T5.account_id = T1.account_id and T5.product_id = T1.product_id
+        WHERE 1 = 1
+          AND cal_id IS NOT NULL
+          AND T4.order_request_id IS NOT NULL
+          AND T2.is_keeping  = 1
+        GROUP BY (cal_month_no)
+    </select>
+
+    <select id="selectCalculateListTotal" parameterType="hashmap" resultType="Integer">
+        --         selectCalculateListTotal
+        SELECT
+        COUNT(*)
+
+        FROM TBL_CALCULATE_INFO t1
+        LEFT JOIN TBL_PRODUCT_LIST t2 ON t1.product_id = t2.product_id
+
+        WHERE 1 = 1
+
+        ORDER BY
+        <if test="order_column != null and order_column != '' ">
+            ${order_column} ${order_type} ,
+        </if>
+        t1.cal_dt desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectCalculatePrice" resultType="CalculateVO">
+        -- 		selectCalculatePrice
+        select
+            CONCAT(DATE_FORMAT(NOW() , '%Y-%m'), "-10")			as this_month_cal_date
+             ,IFNULL(sum(if(DATE_FORMAT(NOW()+ INTERVAL  -1 month, '%Y%m') =  tc.cal_month, tcd.cal_price, 0)),0)	as this_month_cal_price
+             ,IFNULL(sum(if(DATE_FORMAT(NOW()+ INTERVAL  -1 month, '%Y%m') =  tc.cal_month, tcd.cal_price, 0)),0) - IFNULL(sum(if(DATE_FORMAT(NOW()+ INTERVAL  -2 month, '%Y%m') =  tc.cal_month, tcd.cal_price, 0)),0)	as deffrent_this_month_price
+
+
+             ,CONCAT(DATE_FORMAT(NOW()+ INTERVAL  +1 month, '%Y-%m'), "-10")		as next_month_cal_date
+             ,IFNULL(sum(if(DATE_FORMAT(NOW(), '%Y%m') =  tc.cal_month, tcd.cal_price, 0)),0)	as next_month_cal_price
+             ,IFNULL(sum(if(DATE_FORMAT(NOW(), '%Y%m') =  tc.cal_month, tcd.cal_price, 0)),0) - IFNULL(sum(if(DATE_FORMAT(NOW()+ INTERVAL  -1 month, '%Y%m') =  tc.cal_month, tcd.cal_price, 0)),0)	as deffrent_next_month_price
+
+        FROM TBL_CALCULATE tc
+                 LEFT JOIN TBL_CALCULATE_DETAIL tcd ON tc.cal_no  = tcd.cal_no
+                 LEFT JOIN TBL_DELIVERY_ORDER tdo ON tcd.delivery_no = tdo.delivery_no
+                 LEFT JOIN TBL_REQUEST_ORDER tro  ON tdo.order_request_id  = tro.order_request_id
+                 LEFT JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tro.product_id
+        where 1 = 1
+          AND tpl.is_keeping  = 1
+    </select>
+
+    <select id="selectCalculateDetailList" resultType="CalculateVO" parameterType="hashmap">
+        -- 월별 정산 리스트
+        SELECT
+            T1.cal_id ,
+            T2.account_name ,
+            T2.account_id ,
+            T1.cal_state ,
+            COUNT(T1.cal_no) AS cal_no,
+            SUM(T1.cal_price) AS cal_price_total,
+            SUM(T1.cal_vprice) AS product_vprice,
+            (LAST_DAY(cal_dt - INTERVAL 1 MONTH) + INTERVAL 1 DAY) AS firstDay,
+            SUM(T1.sell_commission) AS sell_commission
+        FROM TBL_CALCULATE_INFO AS T1
+                 LEFT JOIN TBL_ACCOUNT AS T2 ON T2.account_id = T1.account_id
+        WHERE cal_month_no = #{cal_month_no}
+        GROUP BY T2.account_id
+    </select>
+
+    <select id="selectCalculateDetailListTotal" parameterType="hashmap" resultType="Integer">
+        -- 월별 정산 리스트 숫자
+        select
+        count(*)
+
+        from TBL_CALCULATE_INFO t1
+        left join TBL_PRODUCT_LIST t2 on t1.product_id = t2.product_id
+        left join TBL_REQUEST_ORDER t3 on t1.order_request_id = t3.order_request_id
+        left join TBL_ACCOUNT t4 on t1.account_id = t4.account_id
+
+        where date_format(t1.cal_dt, '%Y-%m-%d') = #{cal_dt}
+        <if test="account_name != null and account_name !=''">
+            and t4.account_name like CONCAT('%',#{account_name},'%')
+        </if>
+        <if test="order_request_id != null and order_request_id !=''">
+            and t1.order_request_id like CONCAT('%',#{order_request_id},'%')
+        </if>
+        <if test="product_id != null and product_id !=''">
+            and t1.product_id like CONCAT('%',#{product_id},'%')
+        </if>
+        <if test="product_name != null and product_name !=''">
+            and t2.product_name like CONCAT('%',#{product_name},'%')
+        </if>
+
+        ORDER BY
+        <if test="order_column != null and order_column != '' ">
+            ${order_column} ${order_type} ,
+        </if>
+        t1.cal_dt desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectCalculateState" resultType="CalculateVO">
+        -- 		selectCalculateState
+        SELECT
+            date_format(t1.cal_dt, '%Y-%m-%d') as cal_dt
+             , t2.sell_type
+             , sum(t1.cal_price) as total_cal_price
+             , t1.cal_state
+
+        from TBL_CALCULATE_INFO t1
+                 left join TBL_PRODUCT_LIST t2 on t1.product_id = t2.product_id
+
+        where 1=1
+          and date_format(t1.cal_dt, '%Y-%m-%d') = #{cal_dt}
+    </select>
+
+    <select id="selectCalculateModal" parameterType="hashmap" resultType="CalculateVO">
+        --         selectCalculateModal
+        select  (
+            select
+                sum(t101.cal_price)
+
+            from TBL_CALCULATE_INFO t101
+
+            where 1=1
+              AND t101.account_id  = t1.account_id
+              AND date_format(t101.cal_dt, '%Y-%m-%d') = date_format(t1.cal_dt, '%Y-%m-%d')
+
+            group by t101.account_id, date_format(t101.cal_dt, '%Y-%m-%d')
+        ) as total_cal_price
+             ,sum(t1.commission) as commission
+
+        from TBL_CALCULATE_INFO t1
+
+        where date_format(t1.cal_dt, '%Y-%m-%d') = #{cal_dt}
+          and AES_DECRYPT(UNHEX(t1.account_id), #{aes_key}) = #{account_id}
+    </select>
+
+    <select id="selectConsignCalculateList" parameterType="hashmap" resultType="CalculateVO">
+        -- 위탁판매상품 정산 리스트
+        SELECT * FROM (
+                          SELECT
+                              tc.cal_month  as cal_month_no,
+                              CONCAT(DATE_FORMAT(STR_TO_DATE(tc.cal_month, '%Y%m'), '%Y-%m'),"-01") as firstDay,
+                              LAST_DAY(STR_TO_DATE(tc.cal_month, '%Y%m')) as lastDay,
+                              DATE_FORMAT(DATE_ADD(LAST_DAY(STR_TO_DATE(tc.cal_month, '%Y%m')), INTERVAl 10 day),'%Y-%m-%d') as cal_dt ,
+
+
+                              SUM(tcd.cal_price) AS cal_price_total ,
+                              SUM(tcd.selling_price) AS cal_vprice ,
+                              SUM(tcd.commission_price) AS sell_commission ,
+                              SUM(tro.order_product_count) as total_product_count ,
+                              if(SUM(if(tc.cal_state= 0 , 1, 0 ) ) != 0,'정산예정','정산완료') as cal_state
+                          FROM TBL_CALCULATE tc
+                                   LEFT JOIN TBL_CALCULATE_DETAIL tcd ON tc.cal_no  = tcd.cal_no
+                                   LEFT JOIN TBL_DELIVERY_ORDER tdo ON tcd.delivery_no = tdo.delivery_no
+                                   LEFT JOIN TBL_REQUEST_ORDER tro  ON tdo.order_request_id  = tro.order_request_id
+                                   LEFT JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tro.product_id
+                          WHERE tpl.is_keeping  = 0
+                          GROUP by tc.cal_month
+                      ) as t101
+        ORDER BY 
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.cal_dt desc
+            LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectConsignCalculateListTotal" parameterType="hashmap" resultType="Integer">
+        SELECT count(*) FROM (
+                                 SELECT
+                                     tc.cal_month  as cal_month_no,
+                                     CONCAT(DATE_FORMAT(STR_TO_DATE(tc.cal_month, '%Y%m'), '%Y-%m'),"-01") as firstDay,
+                                     LAST_DAY(STR_TO_DATE(tc.cal_month, '%Y%m')) as lastDay,
+                                     DATE_FORMAT(DATE_ADD(LAST_DAY(STR_TO_DATE(tc.cal_month, '%Y%m')), INTERVAl 10 day),'%Y-%m-%d') as cal_dt ,
+
+
+                                     SUM(tcd.cal_price) AS cal_price_total ,
+                                     SUM(tcd.selling_price) AS cal_vprice ,
+                                     SUM(tcd.commission_price) AS sell_commission ,
+                                     SUM(tro.order_product_count) as total_product_count ,
+                                     if(SUM(if(tc.cal_state= 0 , 1, 0 ) ) != 0,'정산예정','정산완료') as cal_state
+                                 FROM TBL_CALCULATE tc
+                                          LEFT JOIN TBL_CALCULATE_DETAIL tcd ON tc.cal_no  = tcd.cal_no
+                                          LEFT JOIN TBL_DELIVERY_ORDER tdo ON tcd.delivery_no = tdo.delivery_no
+                                          LEFT JOIN TBL_REQUEST_ORDER tro  ON tdo.order_request_id  = tro.order_request_id
+                                          LEFT JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tro.product_id
+                                 WHERE tpl.is_keeping  = 0
+                                 GROUP by tc.cal_month
+                             ) as t1
+        ORDER BY t1.cal_dt desc
+    </select>
+
+    <update id="updateCalState" parameterType="CalculateVO">
+        UPDATE TBL_CALCULATE
+        SET cal_state = 1
+        WHERE cal_no in
+        <foreach collection="cal_id_list" item="item" index="index" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <insert id="insertCalculateDecide" parameterType="CalculateVO">
+        INSERT INTO TBL_CALCULATE_DECIDE
+        (
+        cal_no
+        , cal_decide_back_name
+        , cal_decide_bank_num
+        , cal_decide_depositor
+        , cal_decide_price
+        , cal_decide_name
+        , cal_decide_reg_dt
+        )
+        SELECT
+        tc.cal_no			as cal_no
+        , tbi.bank_name		as cal_decide_back_name
+        , tbi.account_num	as cal_decide_back_num
+        , tbi.depositor		as cal_decide_depositor
+        , (SELECT SUM(tcd.cal_price) FROM TBL_CALCULATE_DETAIL tcd WHERE tcd.cal_no = tc.cal_no)	as cal_decide_price
+        , (SELECT account_name FROM TBL_ACCOUNT WHERE AES_DECRYPT(UNHEX(account_id),#{aes_key}) = #{account_id}) as cal_decide_name
+        , now()				as cal_decide_reg_dt
+        FROM TBL_CALCULATE tc
+        LEFT JOIN TBL_ACCOUNT ta ON tc.seller_id = ta.account_id
+        LEFT JOIN TBL_BUSINESS_INFO tbi	ON tbi.account_id = ta.account_id
+        WHERE tc.cal_no IN
+        <foreach collection="cal_id_list" item="item" index="index" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+
+    </insert>
+
+    <select id="selectCalculateModalList" parameterType="hashmap" resultType="CalculateVO">
+        -- 반품수거보관 정산 모달창 리스트
+        SELECT
+            T3.order_request_id ,
+            T1.product_id ,
+            T2.product_name ,
+            T1.consumer ,
+            T2.product_price ,
+            T1.sell_commission ,
+            T1.cal_price ,
+            DATE_FORMAT(T3.order_request_dt, '%Y-%m-%d') AS order_request_dt,
+            DATE_FORMAT(T3.order_decide_dt, '%Y-%m-%d') AS order_decide_dt,
+            T2.sell_type ,
+            T3.order_product_count
+        FROM TBL_CALCULATE_INFO AS T1
+                 LEFT JOIN TBL_PRODUCT_LIST AS T2 ON T2.product_id = T1.product_id
+                 LEFT JOIN TBL_REQUEST_ORDER AS T3 ON T3.order_request_id = T1.order_request_id
+                 LEFT JOIN TBL_PRODUCT_LIST AS T4 ON T4.product_id = T1.product_id
+        WHERE 1 = 1
+          AND T1.account_id = #{account_id}
+          AND DATE_FORMAT(LAST_DAY(cal_dt), '%Y-%m') = #{date}
+          AND T4.is_keeping  = 0
+    </select>
+
+    <select id="selectCalculateModalDetail" parameterType="hashmap" resultType="CalculateVO">
+        -- 정산 모달창 세부 사항
+        SELECT
+            #{cal_no} as cal_id,
+            SUM(tcd.selling_price) AS product_price_total,
+            COUNT(tcd.cal_reg_dt) AS cal_count ,
+            SUM(tcd.commission_price) AS sell_commission ,
+            if(tc.cal_state = 0 , SUM(tcd.cal_price) , tcd2.cal_decide_price )  as cal_price ,
+            ta.account_name ,
+            ta.account_id ,
+            tbi.bank_name ,
+            if(tc.cal_state = 0 , tbi.bank_name , tcd2.cal_decide_back_name  )  as bank_name,
+            if(tc.cal_state = 0 , tbi.account_num , tcd2.cal_decide_bank_num  ) as account_num,
+            if(tc.cal_state = 0 , tbi.depositor, tcd2.cal_decide_depositor  )	as depositor,
+            if(tc.cal_state = 0 , DATE_FORMAT(DATE_ADD(LAST_DAY(STR_TO_DATE(tc.cal_month, '%Y%m')), INTERVAl 10 day),'%Y-%m-%d'), DATE_FORMAT(tcd2.cal_decide_reg_dt  , '%Y-%m-%d %T') ) 	as cal_dt,
+            if(tc.cal_state = 0 , '-' , tcd2.cal_decide_name  )  as cal_admin,
+            if(tc.cal_state = 0,'정산예정','정산완료')		as cal_state
+        FROM TBL_CALCULATE tc
+                 LEFT JOIN TBL_CALCULATE_DETAIL tcd ON tc.cal_no  = tcd.cal_no
+                 LEFT JOIN TBL_DELIVERY_ORDER tdo ON tcd.delivery_no = tdo.delivery_no
+                 LEFT JOIN TBL_REQUEST_ORDER tro  ON tdo.order_request_id  = tro.order_request_id
+                 LEFT JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tro.product_id
+                 LEFT JOIN TBL_ACCOUNT ta ON ta.account_id = tc.seller_id
+                 LEFT JOIN TBL_BUSINESS_INFO AS tbi ON tbi.account_id = ta.account_id
+                 LEFT JOIN TBL_CALCULATE_DECIDE tcd2 on tcd2.cal_no = tc.cal_no
+        WHERE tpl.is_keeping  = 0
+          AND tc.cal_no = #{cal_no}
+    </select>
+
+    <select id="selectReturnCalDetail" parameterType="hashmap" resultType="CalculateVO">
+--         selectReturnCalDetail
+        SELECT
+            T1.cal_id ,
+            T6.account_name,
+            AES_DECRYPT(UNHEX(T1.account_id),#{aes_key}) AS account_id ,
+            T1.cal_state ,
+            T3.remain_count ,
+            SUM(T1.cal_vprice) AS cal_vprice ,
+            SUM(T1.cal_price) AS cal_price_total ,
+            SUM(T1.sell_commission) AS sell_commission ,
+            (LAST_DAY(cal_dt - INTERVAL 1 MONTH) + INTERVAL 1 DAY) AS firstDay ,
+            SUM(T7.return_count) AS return_count,
+            SUM(T7.store_count) AS store_count,
+            SUM(T7.release_count) AS release_count,
+            T5.sort_type ,
+            (SELECT SUM(payment_price) FROM TBL_OFFER_MANAGEMENT WHERE account_id = #{account_id}) AS payment_price,
+            (SELECT IF(COUNT(*) > 0, 3000, 0)
+             FROM TBL_CALCULATE_INFO t1
+                      LEFT JOIN TBL_PRODUCT_LIST t2 ON t1.product_id = t2.product_id
+                      LEFT JOIN TBL_REQUEST_RETURN t3 ON t1.product_id = t2.product_id
+             WHERE 1 = 1
+               AND t1.account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+               AND t2.sell_type = '반품보관'
+               AND t3.is_direct_delivery = 0
+               and t2.account_id = T1.account_id) AS return_collection_cost,
+            IF(T5.sort_type = '기부' OR T5.sort_type = '폐기', 3000, 0) AS offer_management_cost,
+            IF(T3.recovery_dt IS NOT NULL, 2000, 0) AS storage_cost,
+            IF(T1.order_request_id IS NOT NULL ,3000, 0) AS forwarding_cost,
+            IF(T3.recovery_dt IS NOT NULL, 3000, 0) AS recovery_cost
+        FROM TBL_CALCULATE_INFO AS T1
+                 LEFT JOIN TBL_PRODUCT_LIST AS T2 ON T2.product_id = T1.product_id
+                 LEFT JOIN TBL_INVENTORY AS T3 ON T3.product_id = T1.product_id
+                 LEFT JOIN TBL_REQUEST_ORDER AS T4 ON T4.order_request_id = T1.order_request_id
+                 LEFT JOIN TBL_OFFER_MANAGEMENT AS T5 ON T5.product_id = T2.product_id
+                 LEFT JOIN TBL_ACCOUNT AS T6 ON T6.account_id = T1.account_id
+                 LEFT JOIN TBL_PRODUCT_COMMISSION AS T7 ON T7.product_id = T2.product_id
+        WHERE cal_month_no = #{cal_month_no}
+        GROUP BY T1.product_id
+    </select>
+
+    <select id="selectCalculateModalListKeep" parameterType="hashmap" resultType="CalculateVO">
+        --         selectCalculateModalListKeep
+        SELECT
+            T4.order_request_id ,
+            T1.product_id ,
+            T2.product_name ,
+            T1.consumer ,
+            T2.product_price ,
+            T1.sell_commission ,
+            T1.cal_price ,
+            DATE_FORMAT(T4.order_request_dt, '%Y-%m-%d') AS order_request_dt ,
+            DATE_FORMAT(T4.order_decide_dt, '%Y-%m-%d') AS order_decide_dt ,
+            T2.sell_type ,
+            T4.order_product_count ,
+            T1.cal_vprice ,
+            DATE_FORMAT(T3.reg_dt, '%Y-%m-%d') AS store_dt ,
+            DATE_FORMAT(T7.reg_dt, '%Y-%m-%d') AS release_dt,
+            (SELECT IF(COUNT(*) > 0, 3000, 0)
+             FROM TBL_CALCULATE_INFO t1
+                      LEFT JOIN TBL_PRODUCT_LIST t2 ON t1.product_id = t2.product_id
+                      LEFT JOIN TBL_REQUEST_RETURN t3 ON t1.product_id = t2.product_id
+             WHERE 1 = 1
+               AND t1.account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+               AND t2.sell_type = '반품보관'
+               AND t3.is_direct_delivery = 0
+               and t2.account_id = T1.account_id) AS return_collection_cost,
+            IF(T5.sort_type = '기부' OR T5.sort_type = '폐기', 3000, 0) AS offer_management_cost,
+            IF(T3.recovery_dt IS NOT NULL, 2000, 0) AS storage_cost,
+            IF(T1.order_request_id IS NOT NULL ,3000, 0) AS forwarding_cost,
+            IF(T3.recovery_dt IS NOT NULL, 3000, 0) AS recovery_cost,
+            (T1.cal_vprice
+                - (SELECT IF(COUNT(*) > 0, 3000, 0)
+                   FROM TBL_CALCULATE_INFO t1
+                            LEFT JOIN TBL_PRODUCT_LIST t2 ON t1.product_id = t2.product_id
+                            LEFT JOIN TBL_REQUEST_RETURN t3 ON t1.product_id = t2.product_id
+                   WHERE 1 = 1
+                     AND t1.account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+                     AND t2.sell_type = '반품보관'
+                     AND t3.is_direct_delivery = 0
+                     AND t2.account_id = T1.account_id)
+                - IF(T5.sort_type = '기부' OR T5.sort_type = '폐기', 3000, 0)
+                - IF(T3.recovery_dt IS NOT NULL, 2000, 0)
+                - IF(T1.order_request_id IS NOT NULL, 3000, 0)
+                - IF(T3.recovery_dt IS NOT NULL, 3000, 0)
+                ) AS original_price
+        FROM TBL_CALCULATE_INFO AS T1
+                 LEFT JOIN TBL_PRODUCT_LIST AS T2 ON T2.product_id = T1.product_id
+                 LEFT JOIN TBL_INVENTORY AS T3 ON T3.product_id = T2.product_id
+                 LEFT JOIN TBL_REQUEST_ORDER AS T4 ON T4.order_request_id = T1.order_request_id
+                 LEFT JOIN TBL_OFFER_MANAGEMENT AS T5 ON T5.account_id = T1.account_id and T5.product_id = T1.product_id
+                 LEFT JOIN TBL_PRODUCT_LIST AS T6 ON T6.product_id = T1.product_id
+                 LEFT JOIN TBL_PRODUCT_RELEASE AS T7 ON T7.product_id = T2.product_id
+        WHERE 1 = 1
+          AND T1.account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+          AND DATE_FORMAT(LAST_DAY(cal_dt), '%Y-%m') = #{date}
+          AND T6.is_keeping  = 1
+    </select>
+
+    <select id="selectCalculateModalDetailKeep" parameterType="hashmap" resultType="CalculateVO">
+        -- 정산 모달창 세부 사항
+        SELECT
+            SUM(T1.cal_vprice) AS cal_vprice,
+            COUNT(*) AS cal_count ,
+            SUM(sell_commission) AS sell_commission ,
+            SUM(cal_price) AS cal_price,
+            T6.account_name ,
+            T6.account_id ,
+            T7.bank_name ,
+            T7.account_num ,
+            T7.depositor ,
+            T1.cal_admin ,
+            DATE_FORMAT(T1.cal_dt, '%Y-%m_%d %H:%i') AS cal_dt,
+            T2.sell_type ,
+            T1.cal_admin,
+            (SELECT IF(COUNT(*) > 0, 3000, 0)
+             FROM TBL_CALCULATE_INFO t1
+                      LEFT JOIN TBL_PRODUCT_LIST t2 ON t1.product_id = t2.product_id
+                      LEFT JOIN TBL_REQUEST_RETURN t3 ON t1.product_id = t2.product_id
+             WHERE 1 = 1
+               AND t1.account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+               AND t2.sell_type = '반품보관'
+               AND t3.is_direct_delivery = 0
+               and t2.account_id = T1.account_id) AS return_collection_cost,
+            IF(T5.sort_type = '기부' OR T5.sort_type = '폐기', 3000, 0) AS offer_management_cost,
+            IF(T3.recovery_dt IS NOT NULL, 2000, 0) AS storage_cost,
+            IF(T1.order_request_id IS NOT NULL ,3000, 0) AS forwarding_cost,
+            IF(T3.recovery_dt IS NOT NULL, 3000, 0) AS recovery_cost,
+            (T1.cal_vprice
+                - (SELECT IF(COUNT(*) > 0, 3000, 0)
+                   FROM TBL_CALCULATE_INFO t1
+                            LEFT JOIN TBL_PRODUCT_LIST t2 ON t1.product_id = t2.product_id
+                            LEFT JOIN TBL_REQUEST_RETURN t3 ON t1.product_id = t2.product_id
+                   WHERE 1 = 1
+                     AND t1.account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+                     AND t2.sell_type = '반품보관'
+                     AND t3.is_direct_delivery = 0
+                     AND t2.account_id = T1.account_id)
+                - IF(T5.sort_type = '기부' OR T5.sort_type = '폐기', 3000, 0)
+                - IF(T3.recovery_dt IS NOT NULL, 2000, 0)
+                - IF(T1.order_request_id IS NOT NULL, 3000, 0)
+                - IF(T3.recovery_dt IS NOT NULL, 3000, 0)
+                ) AS original_price
+        FROM TBL_CALCULATE_INFO AS T1
+                 LEFT JOIN TBL_PRODUCT_LIST AS T2 ON T2.product_id = T1.product_id
+                 LEFT JOIN TBL_INVENTORY AS T3 ON T3.product_id = T1.product_id
+                 LEFT JOIN TBL_REQUEST_ORDER AS T4 ON T4.order_request_id = T1.order_request_id
+                 LEFT JOIN TBL_OFFER_MANAGEMENT AS T5 ON T5.account_id = T1.account_id and T5.product_id = T1.product_id
+                 LEFT JOIN TBL_ACCOUNT AS T6 ON T6.account_id = T1.account_id
+                 LEFT JOIN TBL_BUSINESS_INFO AS T7 ON T7.account_id = T6.account_id
+
+        WHERE 1 = 1
+          AND T6.account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+          AND DATE_FORMAT(LAST_DAY(cal_dt), '%Y-%m') = #{date}
+          AND T2.is_keeping  = 1
+    </select>
+
+    <select id="selectCalculateChartInfo" parameterType="CalculateVO" resultType="CalculateChartVO">
+        --         selectCalculateChartInfo
+        SELECT
+            IFNULL(SUM(if(tpl.is_keeping = 0,tcd.cal_price,0)),0) AS cal_price,
+            IFNULL(SUM(if(tpl.is_keeping = 0,tcd.selling_price,0)),0) AS sell_price,
+            IFNULL(SUM(if(tpl.is_keeping = 0, tcd.commission_price,0)),0) AS commission,
+            DATE_FORMAT(DATE_ADD(monthTable.monthSeq, INTERVAL 1 MONTH), '%Y-%m') AS chart_date
+        FROM (
+                 SELECT DATE_ADD(NOW(), INTERVAL -seq.seq MONTH) AS monthSeq
+                 FROM (
+                          SELECT seq0 AS seq
+                          FROM (
+                                   SELECT 0 + #{chartIndex} AS seq0 UNION ALL
+                                   SELECT 1 + #{chartIndex} UNION ALL
+                                   SELECT 2 + #{chartIndex} UNION ALL
+                                   SELECT 3 + #{chartIndex} UNION ALL
+                                   SELECT 4 + #{chartIndex} UNION ALL
+                                   SELECT 5 + #{chartIndex}
+                               ) AS tens
+                      ) AS seq
+                 ORDER BY monthSeq
+             ) AS monthTable
+                 LEFT JOIN TBL_CALCULATE tc ON tc.cal_month = DATE_FORMAT(monthTable.monthSeq, '%Y%m')
+                 LEFT JOIN TBL_CALCULATE_DETAIL tcd ON tc.cal_no  = tcd.cal_no
+                 LEFT JOIN TBL_DELIVERY_ORDER tdo ON tcd.delivery_no = tdo.delivery_no
+                 LEFT JOIN TBL_REQUEST_ORDER tro  ON tdo.order_request_id  = tro.order_request_id
+                 LEFT JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tro.product_id
+        GROUP BY monthTable.monthSeq;
+    </select>
+
+    <select id="selectReturnCalculateChartInfo" parameterType="CalculateVO" resultType="CalculateChartVO">
+        --         selectReturnCalculateChartInfo
+        SELECT
+            IFNULL(SUM(if(tpl.is_keeping = 1, tcd.cal_price,0)),0) AS cal_price,
+            IFNULL(SUM(if(tpl.is_keeping = 1, tcd.selling_price,0)),0) AS sell_price,
+            IFNULL(SUM(if(tpl.is_keeping = 1, tcd.commission_price,0)),0) AS commission,
+            DATE_FORMAT(DATE_ADD(monthTable.monthSeq, INTERVAL 1 MONTH), '%Y-%m') AS chart_date
+        FROM (
+                 SELECT DATE_ADD(NOW(), INTERVAL -seq.seq MONTH) AS monthSeq
+                 FROM (
+                          SELECT seq0 AS seq
+                          FROM (
+                                   SELECT 0 + #{chartIndex} AS seq0 UNION ALL
+                                   SELECT 1 + #{chartIndex} UNION ALL
+                                   SELECT 2 + #{chartIndex} UNION ALL
+                                   SELECT 3 + #{chartIndex} UNION ALL
+                                   SELECT 4 + #{chartIndex} UNION ALL
+                                   SELECT 5 + #{chartIndex}
+                               ) AS tens
+                      ) AS seq
+                 ORDER BY monthSeq
+             ) AS monthTable
+                 LEFT JOIN TBL_CALCULATE tc ON tc.cal_month = DATE_FORMAT(monthTable.monthSeq, '%Y%m')
+                 LEFT JOIN TBL_CALCULATE_DETAIL tcd ON tc.cal_no  = tcd.cal_no
+                 LEFT JOIN TBL_DELIVERY_ORDER tdo ON tcd.delivery_no = tdo.delivery_no
+                 LEFT JOIN TBL_REQUEST_ORDER tro  ON tdo.order_request_id  = tro.order_request_id
+                 LEFT JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tro.product_id
+        GROUP BY monthTable.monthSeq;
+    </select>
+
+    <select id="selectCalNo" parameterType="Integer" resultType="String">
+--         selectCalNo
+        SELECT cal_no
+
+        FROM TBL_CALCULATE
+        WHERE seller_id = (select tro.account_id  from TBL_DELIVERY_ORDER tdo
+                                                           LEFT JOIN TBL_REQUEST_ORDER tro ON tdo.order_request_id  = tro.order_request_id
+                           WHERE tdo.delivery_no  = #{delivery_no}
+        )
+          AND cal_month = DATE_FORMAT(NOW(), '%Y%m')
+    </select>
+
+    <insert id="insertCalculate" parameterType="OrderDecideVO">
+--         insertCalculate
+        <selectKey resultType="String" keyProperty="cal_no" order="AFTER">
+            SELECT MAX(cal_no) FROM TBL_CALCULATE
+        </selectKey>
+        INSERT INTO TBL_CALCULATE
+        (cal_no
+        , seller_id
+        , cal_month
+        , cal_state
+        )
+        VALUES(
+        (select concat(DATE_FORMAT(NOW(), '%Y%m') ,'-', LPAD(nextval(cal_seq) , 3, 0)))
+        , (select tro.account_id  from TBL_DELIVERY_ORDER tdo
+        LEFT JOIN TBL_REQUEST_ORDER tro ON tdo.order_request_id  = tro.order_request_id
+        WHERE tdo.delivery_no  = #{delivery_no} )
+        , DATE_FORMAT(NOW(), '%Y%m')
+        , 0);
+
+    </insert>
+
+    <insert id="insertCalculateDetail" parameterType="OrderDecideVO">
+--         insertCalculateDetail
+        INSERT INTO TBL_CALCULATE_DETAIL
+        (
+            cal_no
+        , delivery_no
+        , selling_price
+        , commission_price
+        , cal_price
+        )
+        SELECT
+            #{cal_no}              as cal_no
+             ,#{delivery_no}	        as delivery_no
+             ,tro.order_price        as selling_price
+             ,if(tpl.sell_type='반품위탁', tro.order_price * 0.35,if(tpl.sell_type='재고위탁', tro.order_price * 0.3, if(tpl.sell_type='직접판매', tro.order_price * 0.1, 0))) as commission_price
+             ,if(tpl.sell_type='반품위탁', tro.order_price * 0.65,if(tpl.sell_type='재고위탁', tro.order_price * 0.7, if(tpl.sell_type='직접판매', tro.order_price * 0.9, 0))) as cal_price
+        FROM TBL_DELIVERY_ORDER tdo
+                 LEFT JOIN TBL_REQUEST_ORDER tro ON tdo.order_request_id  = tro.order_request_id
+                 LEFT JOIN TBL_PRODUCT_LIST tpl ON tro.product_id  = tpl.product_id
+        WHERE tdo.delivery_no = #{delivery_no}
+    </insert>
+
+    <select id="selectCalculateTotalInfo" resultType="CalculateVO">
+        -- 		selectCalculatePrice
+        select
+            CONCAT(DATE_FORMAT(NOW() , '%Y-%m'), "-10")			as this_month_cal_date
+             ,IFNULL(sum(if(DATE_FORMAT(NOW()+ INTERVAL  -1 month, '%Y%m') =  tc.cal_month, tcd.cal_price, 0)),0)	as this_month_cal_price
+             ,IFNULL(sum(if(DATE_FORMAT(NOW()+ INTERVAL  -1 month, '%Y%m') =  tc.cal_month, tcd.cal_price, 0)),0) - IFNULL(sum(if(DATE_FORMAT(NOW()+ INTERVAL  -2 month, '%Y%m') =  tc.cal_month, tcd.cal_price, 0)),0)	as deffrent_this_month_price
+
+
+             ,CONCAT(DATE_FORMAT(NOW()+ INTERVAL  +1 month, '%Y-%m'), "-10")		as next_month_cal_date
+             ,IFNULL(sum(if(DATE_FORMAT(NOW(), '%Y%m') =  tc.cal_month, tcd.cal_price, 0)),0)	as next_month_cal_price
+             ,IFNULL(sum(if(DATE_FORMAT(NOW(), '%Y%m') =  tc.cal_month, tcd.cal_price, 0)),0) - IFNULL(sum(if(DATE_FORMAT(NOW()+ INTERVAL  -1 month, '%Y%m') =  tc.cal_month, tcd.cal_price, 0)),0)	as deffrent_next_month_price
+
+        FROM TBL_CALCULATE tc
+                 LEFT JOIN TBL_CALCULATE_DETAIL tcd ON tc.cal_no  = tcd.cal_no
+                 LEFT JOIN TBL_DELIVERY_ORDER tdo ON tcd.delivery_no = tdo.delivery_no
+                 LEFT JOIN TBL_REQUEST_ORDER tro  ON tdo.order_request_id  = tro.order_request_id
+                 LEFT JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tro.product_id
+        where 1 = 1
+          AND tpl.is_keeping  = 0
+    </select>
+
+    <select id="selectCalculateDetailInfo" resultType="CalculateVO">
+        -- 		selectCalculateDetailInfo
+        SELECT
+            DATE_FORMAT(NOW() + interval 1 month , '%Y-%m-10')	 as cal_dt
+             , '위탁판매'					as sell_type
+             , sum(tcd.cal_price) as total_cal_price
+             , sum(tcd.commission_price) as sell_commission
+             , sum(tcd.selling_price) as product_vprice
+             , if(tc.cal_state = 0 ,'정산예정', '정산완료')		as cal_state
+             , #{cal_no}                                       as cal_id
+             , (select  count(seller_id) FROM TBL_CALCULATE WHERE cal_month  =  #{cal_no} ) as seller_count
+        FROM TBL_CALCULATE tc
+                 LEFT JOIN TBL_CALCULATE_DETAIL tcd ON tc.cal_no  = tcd.cal_no
+                 LEFT JOIN TBL_DELIVERY_ORDER tdo ON tcd.delivery_no = tdo.delivery_no
+                 LEFT JOIN TBL_REQUEST_ORDER tro  ON tdo.order_request_id  = tro.order_request_id
+                 LEFT JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tro.product_id
+                 LEFT JOIN TBL_ACCOUNT ta ON ta.account_id = tc.seller_id
+        WHERE tpl.is_keeping  = 0
+          AND tc.cal_month = #{cal_no}
+        GROUP BY tc.cal_month
+
+    </select>
+
+    <select id="selectCalculateDetail" resultType="CalculateVO" parameterType="hashmap">
+        -- 월별 정산 리스트
+        SELECT * FROM (SELECT
+        tc.cal_no 						as cal_id,
+        ta.account_name  				as account_name,
+        if(tc.cal_state = 0 ,'정산예정','정산완료') 	as cal_state,
+        tc.seller_id  					as account_id,
+        SUM(tro.order_product_count)	as cal_no ,
+        SUM(tcd.selling_price) 			as product_vprice,
+        SUM(tcd.commission_price) 		as sell_commission,
+        SUM(tcd.cal_price)				as cal_price_total
+        FROM TBL_CALCULATE tc
+        LEFT JOIN TBL_CALCULATE_DETAIL tcd ON tc.cal_no  = tcd.cal_no
+        LEFT JOIN TBL_DELIVERY_ORDER tdo ON tcd.delivery_no = tdo.delivery_no
+        LEFT JOIN TBL_REQUEST_ORDER tro  ON tdo.order_request_id  = tro.order_request_id
+        LEFT JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tro.product_id
+        LEFT JOIN TBL_ACCOUNT ta ON ta.account_id = tc.seller_id
+        WHERE tpl.is_keeping  = 0
+        AND tc.cal_month = #{cal_month_no}
+        <if test="cal_state != null">
+            AND tc.cal_state = #{cal_state}
+        </if>
+        <if test="account_name != null and account_name != ''">
+            and ta.account_name like CONCAT('%',#{account_name},'%')
+        </if>
+        GROUP BY tc.cal_no
+        ) as t101
+        ORDER BY 
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.cal_id desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectCalculateDetailTotal" resultType="Integer" parameterType="hashmap">
+        -- 월별 정산 리스트
+        SELECT count(*)
+        FROM (
+        SELECT
+        tc.cal_no 						as cal_id,
+        ta.account_name  				as account_name,
+        if(tc.cal_state = 0 ,'정산예정','정산완료') 	as cal_state,
+        tc.seller_id  					as account_id,
+        SUM(tro.order_product_count)	as cal_no ,
+        SUM(tcd.selling_price) 			as product_vprice,
+        SUM(tcd.commission_price) 		as sell_commission,
+        SUM(tcd.cal_price)				as cal_price_total
+        FROM TBL_CALCULATE tc
+        LEFT JOIN TBL_CALCULATE_DETAIL tcd ON tc.cal_no  = tcd.cal_no
+        LEFT JOIN TBL_DELIVERY_ORDER tdo ON tcd.delivery_no = tdo.delivery_no
+        LEFT JOIN TBL_REQUEST_ORDER tro  ON tdo.order_request_id  = tro.order_request_id
+        LEFT JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tro.product_id
+        LEFT JOIN TBL_ACCOUNT ta ON ta.account_id = tc.seller_id
+        WHERE tpl.is_keeping  = 0
+        AND tc.cal_month = #{cal_month_no}
+        <if test="cal_state != null">
+            AND tc.cal_state = #{cal_state}
+        </if>
+        <if test="account_name != null and account_name != ''">
+            and ta.account_name like CONCAT('%',#{account_name},'%')
+        </if>
+        GROUP BY tc.cal_no
+        ) as t101
+    </select>
+
+    <select id="selectCalculateModalTableDetail" parameterType="hashmap" resultType="CalculateVO">
+        -- 정산 모달창 세부 사항
+        SELECT * FROM (SELECT
+            tpl.sell_type               as sell_type
+             , tcd.delivery_no           as order_request_id
+             , tpl.product_id            as product_id
+             , tpl.product_name          as product_name
+             , tro.order_product_count   as order_product_count
+             , tdo.order_send_name       as consumer
+             , tcd.selling_price         as product_price
+             , tcd.commission_price      as sell_commission
+             , tcd.cal_price             as cal_price
+             , DATE_FORMAT(tro.order_request_dt, '%Y-%m-%d') AS order_request_dt
+             , (select DATE_FORMAT(reg_dt, '%Y-%m-%d') FROM TBL_HISTORY_DELIVERY thd WHERE thd.delivery_no = tcd.delivery_no AND thd.state = '정산예정') AS order_decide_dt
+        FROM TBL_CALCULATE tc
+                 LEFT JOIN TBL_CALCULATE_DETAIL tcd ON tc.cal_no  = tcd.cal_no
+                 LEFT JOIN TBL_DELIVERY_ORDER tdo ON tcd.delivery_no = tdo.delivery_no
+                 LEFT JOIN TBL_REQUEST_ORDER tro  ON tdo.order_request_id  = tro.order_request_id
+                 LEFT JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tro.product_id
+                 LEFT JOIN TBL_ACCOUNT ta ON ta.account_id = tc.seller_id
+        WHERE tpl.is_keeping  = 0
+          AND tc.cal_no = #{cal_no}
+        ) as t101
+         ORDER BY 
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.order_request_id desc
+            LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectCalculateModalTableDetailTotal" parameterType="hashmap" resultType="Integer">
+--         selectCalculateModalTableDetailTotal
+        SELECT
+            count(*)
+        FROM TBL_CALCULATE tc
+                 LEFT JOIN TBL_CALCULATE_DETAIL tcd ON tc.cal_no  = tcd.cal_no
+                 LEFT JOIN TBL_DELIVERY_ORDER tdo ON tcd.delivery_no = tdo.delivery_no
+                 LEFT JOIN TBL_REQUEST_ORDER tro  ON tdo.order_request_id  = tro.order_request_id
+                 LEFT JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tro.product_id
+                 LEFT JOIN TBL_ACCOUNT ta ON ta.account_id = tc.seller_id
+        WHERE tpl.is_keeping  = 0
+          AND tc.cal_no = #{cal_no}
+    </select>
+
+    <select id="selectReturnCalculateList" parameterType="hashmap" resultType="CalculateVO">
+        -- selectReturnCalculateList
+        SELECT * FROM (
+                          SELECT
+                              tc.cal_month  as cal_month_no,
+                              CONCAT(DATE_FORMAT(STR_TO_DATE(tc.cal_month, '%Y%m'), '%Y-%m'),"-01") as firstDay,
+                              LAST_DAY(STR_TO_DATE(tc.cal_month, '%Y%m')) as lastDay,
+                              DATE_FORMAT(DATE_ADD(LAST_DAY(STR_TO_DATE(tc.cal_month, '%Y%m')), INTERVAl 10 day),'%Y-%m-%d') as cal_dt ,
+
+                              (select count(distinct tc2.seller_id) from TBL_CALCULATE tc2) as seller_number,
+                              SUM(tcd.selling_price) AS cal_price_total ,
+                              SUM(tro.order_product_count) as remain_count ,
+                              if(SUM(if(tc.cal_state= 0 , 1, 0 ) ) != 0,'정산예정','정산완료') as cal_state,
+                              AES_DECRYPT(UNHEX(tc.seller_id),#{aes_key})   AS seller_id
+                          FROM TBL_CALCULATE tc
+                                   LEFT JOIN TBL_CALCULATE_DETAIL tcd ON tc.cal_no  = tcd.cal_no
+                                   LEFT JOIN TBL_DELIVERY_ORDER tdo ON tcd.delivery_no = tdo.delivery_no
+                                   LEFT JOIN TBL_REQUEST_ORDER tro  ON tdo.order_request_id  = tro.order_request_id
+                                   LEFT JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tro.product_id
+                          WHERE tpl.is_keeping  = 1
+                          GROUP by tc.cal_month
+                      ) as t101
+        ORDER BY 
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+         t101.cal_dt desc
+            LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectReturnCalculateListTotal" parameterType="hashmap" resultType="Integer">
+        --         selectReturnCalculateListTotal
+        SELECT count(*)
+        FROM (
+             SELECT
+                 tc.cal_month  as cal_month_no,
+                 CONCAT(DATE_FORMAT(STR_TO_DATE(tc.cal_month, '%Y%m'), '%Y-%m'),"-01") as firstDay,
+                 LAST_DAY(STR_TO_DATE(tc.cal_month, '%Y%m')) as lastDay,
+                 DATE_FORMAT(DATE_ADD(LAST_DAY(STR_TO_DATE(tc.cal_month, '%Y%m')), INTERVAl 10 day),'%Y-%m-%d') as cal_dt ,
+
+
+                 (select count(distinct tc2.seller_id) from TBL_CALCULATE tc2) as seller_number,
+                 SUM(tcd.selling_price) AS cal_price_total ,
+                 SUM(tro.order_product_count) as remain_count ,
+                 if(SUM(if(tc.cal_state= 0 , 1, 0 ) ) != 0,'정산예정','정산완료') as cal_state,
+                 AES_DECRYPT(UNHEX(tc.seller_id),#{aes_key})   AS seller_id
+             FROM TBL_CALCULATE tc
+                      LEFT JOIN TBL_CALCULATE_DETAIL tcd ON tc.cal_no  = tcd.cal_no
+                      LEFT JOIN TBL_DELIVERY_ORDER tdo ON tcd.delivery_no = tdo.delivery_no
+                      LEFT JOIN TBL_REQUEST_ORDER tro  ON tdo.order_request_id  = tro.order_request_id
+                      LEFT JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tro.product_id
+             WHERE tpl.is_keeping  = 1
+             GROUP by tc.cal_month
+         ) as t1
+        ORDER BY t1.cal_dt desc
+    </select>
+</mapper>

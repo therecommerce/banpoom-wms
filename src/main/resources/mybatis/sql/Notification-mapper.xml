@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="notification">
+
+    <insert id="insertInspectionNotification" parameterType="NotificationVO">
+        -- 		insertInspectionNotification
+        insert into TBL_NOTIFICATION(
+                                     account_id
+                                     , title
+                                     , content
+                                     , check_flag
+                                     , read_flag
+        ) values (
+                    HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+                  , #{title}
+                  , #{content}
+                  , 0
+                  , 0
+                         )
+    </insert>
+
+    <insert id="insertNotification" parameterType="NotificationVO">
+        -- 		Notification
+        insert into TBL_NOTIFICATION(
+        title
+        , content
+        , account_id
+        , check_flag
+        , read_flag
+        )
+        values
+        <if test="account_id == null or account_id == ''">
+            <foreach collection="account_id_list" item="item" index="index" separator=",">
+                (
+                #{title}
+                , #{content}
+                , HEX(AES_ENCRYPT(#{item}, #{aes_key}))
+                , '0'
+                , '0'
+                )
+            </foreach>
+        </if>
+        <if test="account_id != null and account_id != ''">
+            (
+            #{title}
+            , #{content}
+            , HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+            , '0'
+            , '0'
+            )
+        </if>
+    </insert>
+</mapper>

@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="common" >
+	<select id="selectCategoryList" resultType="CategoryVO" parameterType="String">
+		-- 		selectCategoryList
+		SELECT
+			category_name
+			 , parent_category_id
+			 , category_id
+		FROM TBL_PRODUCT_CATEGORY
+		WHERE 1=1
+		<if test="value != null and value != ''">
+		AND	parent_category_id = #{value}
+		</if>
+		<if test="value == null or value == ''">
+		AND	parent_category_id is null
+		</if>
+	</select>
+
+	<insert id="insertDeliveryInfo">
+-- 		insertDeliveryInfo
+		INSERT INTO TBL_DELIVERY_INFO (
+										product_id
+									  , forwarding_destination_zip
+									  , forwarding_destination_addr1
+									  , forwarding_destination_addr2
+									  , delivery_company
+									  , delivery_type
+									  , delivery_charge
+									  , return_location_zip
+									  , return_location_addr1
+									  , return_location_addr2
+									  , return_charge
+									  , bundle_delivery
+		)VALUES
+			(
+				#{product_id}
+			, #{forwarding_destination_zip}
+			, #{forwarding_destination_addr1}
+			, #{forwarding_destination_addr2}
+			, #{delivery_company}
+			, #{delivery_type}
+			, #{delivery_charge}
+			, #{return_location_zip}
+			, #{return_location_addr1}
+			, #{return_location_addr2}
+			, #{return_charge}
+			, #{bundle_delivery}
+			)
+			ON DUPLICATE KEY UPDATE  forwarding_destination_zip = #{forwarding_destination_zip}, forwarding_destination_addr1 = #{forwarding_destination_addr1} , forwarding_destination_addr2 = #{forwarding_destination_addr2}
+								 ,delivery_company = #{delivery_company} , delivery_type = #{delivery_type}, delivery_charge = #{delivery_charge}, return_location_zip =  #{return_location_zip}, return_location_addr1 = #{return_location_addr1}
+								 , return_location_addr2 = #{return_location_addr2} , return_charge = #{return_charge} , mod_dt = now()
+	</insert>
+
+
+	<select id="selectChangePriceList" resultType="ChangePriceVO">
+		<!--    위탁상품 상세보기 페이지-->
+		SELECT
+		date_format(t1.change_dt, '%Y.%m.%d. %H:%i') as change_dt
+		, t1.change_type
+		, t1.change_price
+		, (100 - t1.change_percent) as change_percent
+
+		FROM TBL_CHANGE_PRICE_LIST t1
+		WHERE product_id = #{product_id}
+	</select>
+
+	<insert id="insertChangePrice">
+-- 		insertChangePrice
+		INSERT INTO TBL_CHANGE_PRICE_LIST (
+					product_id
+				  , change_price
+				  , change_percent
+				  , change_type
+
+		) values (
+					 #{product_id}
+				 , #{product_vprice}
+				 , round((#{product_vprice}/(select product_price from TBL_PRODUCT_LIST WHERE product_id = #{product_id})*100),0)
+				 , #{change_type}
+				 )
+	</insert>
+
+	<update id="updateChangePrice">
+		UPDATE TBL_PRODUCT_LIST
+		SET product_vprice = #{product_vprice}
+		WHERE product_id = #{product_id}
+	</update>
+
+	<select id="selectInspectionFileList" resultType="fileVO">
+-- 		selectInspectionFileList
+		select
+			t3.file_id
+			 , t3.file_ext
+			 , t3.file_content_type
+			 , t3.file_size
+			 , t3.reg_dt
+			 , t2.file_state	as file_name
+		from TBL_PRODUCT_INSPECTION t1
+		LEFT JOIN TBL_PRODUCT_INSPECTION_FILE t2 ON t1.product_id  = t2.product_id
+		LEFT JOIN TBL_FILE t3 ON t2.file_id  = t3.file_id
+		WHERE t1.product_id = #{product_id}
+		and t3.file_id is not null
+	</select>
+
+	<select id="selectNoticeFileList" resultType="fileVO">
+		select
+			t3.file_id
+		  , t3.file_ext
+		  , t3.file_content_type
+		  , t3.file_size
+		  , t3.reg_dt
+
+		from TBL_NOTICE t1
+		LEFT JOIN TBL_NOTICE_FILE t2 on t1.notice_no  = t2.notice_no
+		LEFT JOIN TBL_FILE t3 on t2.file_id = t3.file_id
+		WHERE t1.notice_no = #{notice_no}
+	</select>
+
+	<select id="selectTotalCount" resultType="CountVO">
+		<!--    selectTotalCount-->
+		SELECT
+		t101.*
+		, t102.*
+		, t103.*
+		, t104.*
+		, t105.*
+		,(SELECT
+		COUNT(*)	as qnaUnanswerCount
+		FROM TBL_PRODUCT_QNA_BOARD t1
+		WHERE t1.product_qna_state = '미답변'
+		) as qnaUnanswerCount
+		,(SELECT
+		COUNT(*) as oneToOneSellerCount
+		FROM TBL_QNA_BOARD t1
+		WHERE t1.qna_state  = '미답변'
+		) as oneToOneSellerCount
+		,(SELECT
+		COUNT(*) as oneToOneUserCount
+		FROM TBL_USER_QNA_BOARD t1
+		WHERE t1.user_qna_state  = '미답변'
+		) as oneToOneUserCount
+		,(SELECT
+		COUNT(*) as reviewCount
+		FROM TBL_review_info t1
+		WHERE t1.review_reg_dt  BETWEEN DATE_ADD(NOW(),INTERVAL -1 MONTH ) AND NOW()
+		) as reviewCount
+		,(SELECT
+		COUNT(*) as reportCount
+		FROM TBL_REPORT_LIST t1
+		WHERE t1.reg_dt  BETWEEN DATE_ADD(NOW(),INTERVAL -1 MONTH ) AND NOW()
+		) as reportCount
+		,(SELECT
+		COUNT(*) as sellerCount
+		from TBL_ACCOUNT ta
+		where ta.grade_id = 4
+		) as sellerCount
+		,(SELECT
+		COUNT(*) as userCount
+		from TBL_ACCOUNT ta
+		where ta.grade_id = 5
+		) as userCount
+		,(SELECT
+		COUNT(*) as dayBeforeSellerCount
+		from TBL_ACCOUNT ta
+		where ta.grade_id = 4
+		AND ta.reg_dt <![CDATA[<=]]> CURRENT_DATE()
+		) as dayBeforeSellerCount
+		,(SELECT
+		COUNT(*) as dayBeforeUserCount
+		from TBL_ACCOUNT ta
+		where ta.grade_id = 5
+		AND ta.reg_dt <![CDATA[<=]]> CURRENT_DATE()
+		) as dayBeforeUserCount
+		FROM
+		(SELECT
+		  IFNULL(SUM(case when t100.state = '판매중' then 1 else 0 end),0) as consignmentSaleCount
+		, IFNULL(SUM(case when t100.state = '픽업요청' then 1 else 0 end),0) as pickupCount
+		, IFNULL(SUM(case when t100.state = '반품구조대로 이동 중' then 1 else 0 end),0) as moveCount
+		, IFNULL(SUM(case when t100.state = '도착/입고' then 1 else 0 end),0) as arrivalCount
+		, IFNULL(SUM(case when t100.state = '최종 검수 대기' then 1 else 0 end),0) as readyCount
+		, IFNULL(SUM(case when t100.state = '검수완료' then 1 else 0 end),0) as completeCount
+		FROM (
+		SELECT thp2.product_id, thp2.reg_dt, thp2.state , tpl.account_id
+		FROM TBL_HISTORY_PRODUCT thp2
+		LEFT JOIN TBL_PRODUCT_LIST tpl ON thp2.product_id = tpl.product_id
+		WHERE (thp2.product_id, thp2.history_id)
+		IN(
+		select product_id , max(history_id) from TBL_HISTORY_PRODUCT thp
+		group by product_id
+		) and (tpl.sell_type = '반품위탁' or tpl.sell_type = '재고위탁')
+		and tpl.is_keeping = false
+		) as t100 ) as t101
+		,(SELECT
+		IFNULL(SUM(case when t1.return_delivery_state = '반품 요청' then 1 else 0 end),0) as returnRequestCount
+		FROM TBL_DELIVERY_RETURN t1
+		left join TBL_REQUEST_RETURN t2 on t1.return_request_id = t2.return_request_id
+		left join TBL_PRODUCT_LIST t3 on t2.product_id = t3.product_id
+		WHERE 1 = 1
+		and t3.sell_type = '위탁판매'
+		AND t3.is_keeping = false) as t102
+		,(SELECT
+		IFNULL(SUM(case when t101.state = '판매중' then 1 else 0 end),0) as directSaleCount
+		FROM (
+		select thp2.product_id, thp2.reg_dt, thp2.state , tpl.account_id
+		FROM TBL_HISTORY_PRODUCT thp2 LEFT JOIN TBL_PRODUCT_LIST tpl ON thp2.product_id = tpl.product_id
+		WHERE (thp2.product_id, thp2.history_id)
+		IN(
+		select product_id , max(history_id) from TBL_HISTORY_PRODUCT thp
+		group by product_id
+		) and tpl.sell_type = '직접판매'
+		AND tpl.is_keeping = false
+		) as t101
+		WHERE 1 = 1)as t103
+		,(SELECT
+		count(case when sort_type = '기부' then 1 end) as donateCount
+		, count(case when sort_type = '폐기' then 1 end) as discardCount
+		, count(case when sort_type = '회수' then 1 end) as recoveryCount
+
+		from TBL_OFFER_MANAGEMENT
+
+		where 1 = 1) as t104
+		,(SELECT
+		COUNT(*) as business_wait
+		  from TBL_ACCOUNT
+		  where business_info_flag = 1) as t105
+	</select>
+
+	<select id="selectDeliveryCount" resultType="CountVO">
+		select
+			IFNULL(SUM(case when t1.order_delivery_state = '결제완료' then 1 else 0 end),0) as paymentCompleteCount
+		  , IFNULL(SUM(case when t1.order_delivery_state = '배송요청' then 1 else 0 end),0) as deliveryRequestCount
+
+		FROM TBL_DELIVERY_ORDER t1
+		left join TBL_REQUEST_ORDER t2 on t1.order_request_id = t2.order_request_id
+		left join TBL_PRODUCT_LIST t3 on t2.product_id = t3.product_id
+
+		where 1=1
+		and (t3.is_keeping = true or t3.is_keeping = false)
+	</select>
+
+	<insert id="batchInsertProductPrice">
+		INSERT INTO TBL_CHANGE_PRICE_LIST (product_id, change_dt, change_type , change_price , change_percent)
+		SELECT
+			tpl.product_id
+			 ,NOW()
+			 ,'자동 변경' as change_type
+			 ,CASE
+				  WHEN tpi.product_grade = 'A'
+					  THEN tpl.product_price * 0.6
+				  WHEN tpi.product_grade = 'B'
+					  THEN tpl.product_price * 0.45
+				  WHEN tpi.product_grade = 'C'
+					  THEN tpl.product_price * 0.35
+			END as change_price
+			 ,CASE
+				  WHEN tpi.product_grade = 'A'
+					  THEN 60
+				  WHEN tpi.product_grade = 'B'
+					  THEN 45
+				  WHEN tpi.product_grade = 'C'
+					  THEN 35
+			END as change_percent
+		FROM TBL_PRODUCT_LIST tpl
+				 LEFT JOIN TBL_PRODUCT_INSPECTION tpi ON tpl.product_id  = tpi.product_id
+		WHERE
+			tpi.product_grade is not null
+		  AND (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = tpl.product_id order by thp.history_id
+				DESC LIMIT 1) = '판매중'
+		  AND date_format((select DATE_ADD(thp.reg_dt ,INTERVAL 31 DAY) from TBL_HISTORY_PRODUCT thp where thp.product_id = tpl.product_id AND thp.state = '판매중' order by thp.history_id
+			ASC LIMIT 1), '%Y-%m-%d') = date_format(now(), '%Y-%m-%d')
+	</insert>
+
+	<update id="batchUpdateProductPrice">
+		UPDATE TBL_PRODUCT_LIST t1 , (SELECT
+			tpl.product_id
+			,NOW()
+			,'자동 변경' as change_type
+			,CASE
+			WHEN tpi.product_grade = 'A'
+			THEN tpl.product_price * 0.8
+			WHEN tpi.product_grade = 'B'
+			THEN tpl.product_price * 0.7
+			WHEN tpi.product_grade = 'C'
+			THEN tpl.product_price * 0.6
+			END as change_price
+			,CASE
+			WHEN tpi.product_grade = 'A'
+			THEN 80
+			WHEN tpi.product_grade = 'B'
+			THEN 70
+			WHEN tpi.product_grade = 'C'
+			THEN 60
+			END as change_percent
+			FROM TBL_PRODUCT_LIST tpl
+			LEFT JOIN TBL_PRODUCT_INSPECTION tpi ON tpl.product_id  = tpi.product_id
+			WHERE
+			tpi.product_grade is not null
+			AND (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = tpl.product_id order by thp.history_id
+			DESC LIMIT 1) = '판매중'
+			AND date_format((select DATE_ADD(thp.reg_dt ,INTERVAL 31 DAY) from TBL_HISTORY_PRODUCT thp where thp.product_id = tpl.product_id AND thp.state = '판매중' order by thp.history_id
+			ASC LIMIT 1), '%Y-%m-%d') = date_format(now(), '%Y-%m-%d')) as t2
+		SET t1.product_vprice  = t2.change_price
+		WHERE t1.product_id = t2.product_id
+	</update>
+
+	<select id="selectProductImage" parameterType="ProductListVO" resultType="Integer">
+-- 		selectProductImage
+		SELECT
+			file_id
+		FROM TBL_PRODUCT_IMAGE
+		WHERE 1 = 1
+		AND product_id = #{product_id}
+	</select>
+</mapper>

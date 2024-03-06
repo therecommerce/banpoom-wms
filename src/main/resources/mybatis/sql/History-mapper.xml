@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="history" >
+
+	<select id="selectHistoryProduct" resultType="HistoryVO">
+		SELECT
+			state       as state
+			 ,DATE_FORMAT(reg_dt,'%y-%m-%d %H:%i') as reg_dt
+		FROM TBL_HISTORY_PRODUCT
+		WHERE product_id = #{product_id}
+		ORDER BY reg_dt
+	</select>
+
+	<select id="selectAllHistoryProduct" resultType="String">
+		select delivery_no
+		from TBL_HISTORY_DELIVERY
+		where history_id in (
+			select
+				max(history_id)
+			from TBL_HISTORY_DELIVERY
+			group by delivery_no
+		)
+	    and state='배송완료'
+		and date_format(reg_dt, '%Y-%m-%d') <![CDATA[<]]> date_format(date_sub(now(), interval 10 day), '%Y-%m-%d')
+	</select>
+
+	<insert id="insertAutoOrderDecide" parameterType="HistoryVO">
+		insert into TBL_HISTORY_DELIVERY(
+		                                product_id
+		                                , state
+		) values
+				<foreach collection="delivery_no_list" item="item" index="index" separator=",">
+					(
+					#{item}
+					, #{state}
+					)
+				</foreach>
+	</insert>
+
+	<insert id="insertProductHistory" parameterType="HistoryVO">
+		<!--    insertProductHistory -->
+		INSERT INTO TBL_HISTORY_PRODUCT (
+		product_id
+		, state
+		) values (
+		#{product_id}
+		, #{state}
+		)
+	</insert>
+
+	<insert id="insertDeliveryHistory" parameterType="HistoryVO">
+-- 		insertDeliveryHistory
+		insert into TBL_HISTORY_DELIVERY (
+		                                  state
+										  , delivery_type
+		                                  , delivery_no
+		) values (
+		          #{state}
+				  , #{delivery_type}
+		          , #{delivery_no}
+						 )
+	</insert>
+
+	<select id="selectUpdateTrackingHistoryList" resultType="TrackingVO">
+		SELECT
+			(select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = tpl.product_id order by thp.history_id
+					DESC LIMIT 1) as product_state
+		     , tpl.product_id		as product_id
+			 , trr.tracking_number 	as tracking_no
+		FROM TBL_PRODUCT_LIST tpl
+			LEFT JOIN TBL_REQUEST_RETURN trr ON tpl.product_id = trr.product_id
+		WHERE
+			trr.tracking_number is not null
+		  AND (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = tpl.product_id order by thp.history_id
+			DESC LIMIT 1) IN ('픽업요청', '반품구조대로 이동 중')
+	</select>
+
+	<select id="selectUpdateDeliveryHistoryList" resultType="ProductListVO">
+		select
+		    (select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id
+		            desc limit 1) as delivery_state
+			, t2.product_id
+			, t2.tracking_number
+		from TBL_DELIVERY_ORDER t1
+		left join TBL_REQUEST_ORDER t2 on t1.order_request_id = t2.order_request_id
+		where t2.tracking_number is not null
+		and (select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id
+			desc limit 1) in ('배송중')
+	</select>
+
+	<select id="selectDeliveryState" parameterType="ProductListVO" resultType="ProductListVO">
+		select
+			t2.tracking_number
+		from TBL_DELIVERY_ORDER t1
+			left join TBL_REQUEST_ORDER t2 on t1.order_request_id = t2.order_request_id
+		where t2.tracking_number is not null
+		and t1.delivery_no in
+		<foreach collection="delivery_no_list" item="item" index="index" separator="," open="(" close=")">
+			#{item}
+		</foreach>
+	</select>
+</mapper>

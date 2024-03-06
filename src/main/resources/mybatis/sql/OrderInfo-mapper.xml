@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="order">
+    <select id="selectOrderInfoModal" parameterType="String" resultType="OrderInfoVO">
+        -- 주문정보 모달창 정보
+        SELECT
+            T1.order_decide_dt ,
+            T1.order_request_id ,
+            T1.order_request_dt ,
+            T1.order_request_message ,
+            T2.product_id ,
+            T2.product_name ,
+            T3.option_price1 ,
+            T3.option_price2 ,
+            T3.option_price3 ,
+            T3.option_price4 ,
+            T3.option_price5 ,
+            T3.option_category1 ,
+            T3.option_category2 ,
+            T3.option_category3 ,
+            T3.option_category4 ,
+            T3.option_category5 ,
+            T4.order_rcv_name ,
+            T4.order_rcv_phone ,
+            T5.paid_state ,
+            T5.cal_dt ,
+            T4.order_rcv_addr1 ,
+            T4.order_rcv_addr2 ,
+            T1.tracking_number ,
+            T4.order_delivery_company ,
+            T4.order_delivery_cost ,
+            T1.order_name ,
+            T1.order_product_count ,
+            T6.return_request_message ,
+            T7.return_send_phone ,
+            T7.return_send_name ,
+            T6.pickup_zipcode ,
+            T6.pickup_address1 ,
+            T6.pickup_address2 ,
+            T6.is_direct_delivery ,
+            T6.return_reason ,
+            T2.product_price
+        FROM TBL_REQUEST_ORDER AS T1
+                 LEFT JOIN TBL_PRODUCT_LIST AS T2 ON T2.product_id  = T1.product_id
+                 LEFT JOIN TBL_PRODUCT_OPTION AS T3 ON T3.product_id = T2.product_id
+                 LEFT JOIN TBL_DELIVERY_ORDER AS T4 ON T4.order_request_id = T1.order_request_id
+                 LEFT JOIN TBL_CALCULATE_INFO AS T5 ON T5.order_request_id = T1.order_request_id
+                 LEFT JOIN TBL_ACCOUNT AS Ta ON T1.account_id = Ta.account_id
+                 LEFT JOIN TBL_REQUEST_RETURN AS T6 ON T6.account_id  = Ta.account_id
+                 LEFT JOIN TBL_DELIVERY_RETURN AS T7 ON T7.return_request_id  = T6.return_request_id
+        WHERE T1.order_request_id = #{order_request_id}
+    </select>
+
+
+</mapper>

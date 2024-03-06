@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="sellerInquiry">
+    <select id="selectSellerInquiryList" parameterType="hashmap" resultType="SellerInquiryVO">
+        SELECT * FROM (SELECT
+            qna_no
+             , qna_type2
+             , qna_title
+             , qna_state
+             , AES_DECRYPT(UNHEX(account_id),#{aes_key}) AS account_id
+             , qna_reg_dt
+        FROM TBL_QNA_BOARD
+        WHERE 1 = 1
+        <if test="qna_state != null and qna_state != ''">
+            AND qna_state LIKE CONCAT('%',#{qna_state},'%')
+        </if>
+        <if test="qna_type2 != null and qna_type2 != ''">
+            AND qna_type2 LIKE CONCAT('%',#{qna_type2},'%')
+        </if>
+        <if test="qna_title != null and qna_title != ''">
+            AND qna_title LIKE CONCAT('%',#{qna_title},'%')
+        </if>
+        <if test="qna_writer != null and qna_writer != ''">
+            AND qna_writer LIKE CONCAT('%',#{qna_writer},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            AND (date_format(qna_reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND date_format(qna_reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.qna_no desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectQnaSellerInquiryDetail" parameterType="String" resultType="SellerInquiryVO">
+        SELECT
+            t1.qna_title
+             , t1.qna_state
+             , t1.qna_type2
+             , t1.qna_reg_dt
+             , t1.qna_writer
+             , t1.qna_content
+             , t1.qna_reg_dt
+             , t1.answeris
+             , t1.qna_answer_dt
+             , t1.qna_answer
+             , t1.qna_no
+             , (select qna_no FROM TBL_QNA_BOARD where qna_no <![CDATA[<]]> t1.qna_no order by qna_no desc limit 1) as previous_qna_no
+			 , (select qna_title FROM TBL_QNA_BOARD where qna_no <![CDATA[<]]> t1.qna_no order by qna_no desc limit 1) as previous_qna_title
+			 , (select qna_no FROM TBL_QNA_BOARD where qna_no <![CDATA[>]]> t1.qna_no order by qna_no limit 1) as next_qna_no
+			 , (select qna_title FROM TBL_QNA_BOARD where qna_no <![CDATA[>]]> t1.qna_no order by qna_no limit 1) as next_qna_title
+        FROM TBL_QNA_BOARD t1
+        WHERE t1.qna_no = #{qna_no}
+    </select>
+
+    <select id="selectQnaSellerInquiryCount" parameterType="hashmap" resultType="Integer">
+        SELECT
+            COUNT(*)
+        FROM TBL_QNA_BOARD
+    </select>
+
+    <update id="insertSellerInquiryAnswer" parameterType="SellerInquiryVO">
+        UPDATE TBL_QNA_BOARD
+        SET qna_answer = #{qna_answer},
+            qna_answer_dt = NOW(),
+            answeris = #{answeris},
+            qna_state = '답변완료',
+            answer_account_id = #{answer_account_id}
+        WHERE qna_no = #{qna_no};
+    </update>
+
+    <select id="selectSellerInquiryImageQuestion" parameterType="SellerInquiryVO" resultType="Integer">
+        SELECT
+            file_id
+        FROM TBL_QNA_Image
+        WHERE 1 = 1
+          AND qna_no = #{qna_no}
+          AND question_img = 1
+    </select>
+
+    <select id="selectSellerInquiryImageAnswer" parameterType="SellerInquiryVO" resultType="Integer">
+        SELECT
+            file_id
+        FROM TBL_QNA_Image
+        WHERE 1 = 1
+          AND qna_no = #{qna_no}
+          AND answer_img = 1
+    </select>
+
+    <insert id="insertSellerInquiryAnswerImage" parameterType="SellerInquiryVO" useGeneratedKeys="true" keyProperty="user_qna_no">
+        INSERT INTO TBL_QNA_Image
+            (qna_no, file_id, answer_img)
+        VALUES(#{qna_no}, #{file_id}, 1)
+    </insert>
+
+    <select id="selectQnaList" parameterType="SellerInquiryVO" resultType="SellerInquiryVO">
+--         selectQnaList
+        select
+            AES_DECRYPT(UNHEX(account_id), #{aes_key}) as account_id
+        from TBL_QNA_BOARD
+        where 1 = 1
+        and qna_no = #{qna_no}
+    </select>
+</mapper>
+
+
+
+
+
+

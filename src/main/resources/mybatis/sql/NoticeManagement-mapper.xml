@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="noticeManagement" >
+
+	<select id="selectNoticeList" parameterType="hashmap" resultType="NoticeManagementVO">
+		SELECT * FROM (SELECT
+		notice_no
+		, notice_type
+		, notice_title
+		, DATE_FORMAT(notice_dt,'%Y-%m-%d %H:%i:%s') AS notice_dt
+		, notice_writer
+		, notice_channel
+		, date_format(start_posting_dt, '%Y-%m-%d') as start_posting_dt
+		, date_format(end_posting_dt, '%Y-%m-%d') as end_posting_dt
+		, hits
+		, important_flag
+		, banner_flag
+
+		FROM TBL_NOTICE
+		WHERE 1 = 1
+		and useflag = 1
+		<if test="notice_title != null and notice_title !=''">
+			and notice_title like CONCAT('%',#{notice_title},'%')
+		</if>
+		<if test="notice_writer != null and notice_writer !=''">
+			and notice_writer like CONCAT('%',#{notice_writer},'%')
+		</if>
+		<if test="notice_type != null and notice_type !=''">
+			and notice_type like CONCAT('%',#{notice_type},'%')
+		</if>
+		) as t101
+		ORDER BY
+		<if test="order_column != null and order_column != ''">
+			${order_column} ${order_type} ,
+		</if>
+		(case when t101.important_flag = 1 then 1 else 2 end),
+		t101.notice_no desc
+		LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+	</select>
+
+	<select id="selectNoticeListTotal" parameterType="hashmap" resultType="Integer">
+		SELECT
+			COUNT(*)
+
+		FROM TBL_NOTICE
+		WHERE 1 = 1
+		and useflag = 1
+		<if test="notice_title != null and notice_title !=''">
+			and notice_title like CONCAT('%',#{notice_title},'%')
+		</if>
+		<if test="notice_writer != null and notice_writer !=''">
+			and notice_writer like CONCAT('%',#{notice_writer},'%')
+		</if>
+		<if test="notice_type != null and notice_type !=''">
+			and notice_type like CONCAT('%',#{notice_type},'%')
+		</if>
+		LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+	</select>
+
+	<delete id="deleteNotice" parameterType="NoticeManagementVO">
+-- 		deleteNotice
+		DELETE FROM TBL_NOTICE
+		where 1=1
+		<if test="notice_no_list != null and notice_no_list != ''">
+			and notice_no IN
+		<foreach collection="notice_no_list" item="item" index="index" separator="," open="(" close=")">
+			#{item}
+		</foreach>
+		</if>
+		<if test="notice_no != null and notice_no != ''">
+			and notice_no = #{notice_no}
+		</if>
+	</delete>
+
+	<select id="selectNoticeDetail" resultType="NoticeManagementVO">
+		SELECT
+			notice_type
+			 , notice_title
+			 , notice_content
+			 , notice_channel
+			 , date_format(notice_dt, '%Y-%m-%d %H:%i') as notice_dt
+			 , notice_writer
+		     , notice_no
+			 , (select notice_no FROM TBL_NOTICE where notice_no <![CDATA[<]]> t1.notice_no order by notice_no desc limit 1) as before_notice_no
+			 , (select notice_title FROM TBL_NOTICE where notice_no <![CDATA[<]]> t1.notice_no order by notice_no desc limit 1) as before_notice_title
+			 , (select notice_no FROM TBL_NOTICE where notice_no <![CDATA[>]]> t1.notice_no order by notice_no limit 1) as after_notice_no
+			 , (select notice_title FROM TBL_NOTICE where notice_no <![CDATA[>]]> t1.notice_no order by notice_no limit 1) as after_notice_title
+		FROM TBL_NOTICE t1
+		WHERE notice_no = #{notice_no}
+			LIMIT 1
+	</select>
+
+	<insert id="insertNotice" parameterType="NoticeManagementVO">
+-- 		insertNotice
+		INSERT INTO TBL_NOTICE (
+		                          notice_type
+		                        , notice_channel
+		                        , notice_title
+		                        , banner_flag
+		                        , important_flag
+		                        , notice_content
+		                        , notice_writer
+		                        , UseFlag
+		                        , start_posting_dt
+		                        , end_posting_dt
+		) values (
+		            #{notice_type}
+		          , #{notice_channel}
+		          , #{notice_title}
+		          , #{banner_flag}
+		          , #{important_flag}
+		          , #{notice_content}
+		          , #{notice_writer}
+		          , 1
+		          , date_format(#{start_posting_dt}, '%Y-%m-%d')
+		          , date_format(#{end_posting_dt}, '%Y-%m-%d')
+		)
+	</insert>
+
+</mapper>

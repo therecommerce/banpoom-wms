@@ -1,0 +1,11 @@
+eclipse.preferences.version=1
+encoding//src/main/resources/properties/config.properties=UTF-8
+encoding//src/main/webapp/WEB-INF/views=UTF-8
+encoding//src/main/webapp/WEB-INF/views/admin/login.jsp=UTF-8
+encoding//src/main/webapp/WEB-INF/views/main/main.jsp=UTF-8
+encoding//src/main/webapp/resources/css/common.css=UTF-8
+encoding//src/main/webapp/resources/css/dashboard.css=UTF-8
+encoding//src/main/webapp/resources/css/location.css=UTF-8
+encoding//src/main/webapp/resources/css/rocation.css=UTF-8
+encoding//src/main/webapp/resources/css/tc-safe.css=UTF-8
+encoding//src/main/webapp/resources/css/tunnel.css=UTF-8

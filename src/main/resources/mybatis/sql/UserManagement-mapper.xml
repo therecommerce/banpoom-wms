@@ -1,0 +1,659 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="user" >
+
+    <select id="selectSellerList" resultType="UserManagementVO">
+        -- 		selectSellerList
+        SELECT * FROM (SELECT
+          AES_DECRYPT(UNHEX(t1.account_id),#{aes_key}) as account_id
+        , t1.account_name
+        , t1.business_info_flag
+        , t1.grade_id
+        , date_format(t1.last_login, '%Y-%m-%d %H:%i:%S') as last_login
+        , date_format(t1.reg_dt, '%Y-%m-%d %H:%i:%S') as reg_dt
+        , t1.account_no
+        , t1.account_dormant
+        , t1.vip_grade
+
+        FROM TBL_ACCOUNT t1
+
+        WHERE 1=1
+        AND t1.grade_id = 4
+        <if test="account_id != null and account_id !=''">
+            and AES_DECRYPT(UNHEX(t1.account_id),#{aes_key}) like CONCAT('%',#{account_id}, '%')
+        </if>
+        <if test="account_name != null and account_name !=''">
+            and t1.account_name like CONCAT('%',#{account_name},'%')
+        </if>
+        <if test="account_dormant != null and account_dormant !=''">
+            and t1.account_dormant like CONCAT('%',#{account_dormant},'%')
+        </if>
+        <if test="business_info_flag != null and business_info_flag !=''">
+            and t1.business_info_flag IN
+            <foreach collection="business_info_flag" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="vip_grade != null and vip_grade !=''">
+            and t1.vip_grade like CONCAT('%',#{vip_grade},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(t1.reg_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(t1.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.account_no desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectSellerListTotal" resultType="Integer">
+        -- 		selectSellerListTotal
+        SELECT
+        count(*)
+
+        FROM TBL_ACCOUNT t1
+
+        WHERE 1=1
+        AND t1.grade_id = 4
+        <if test="account_id != null and account_id !=''">
+            and AES_DECRYPT(UNHEX(t1.account_id),#{aes_key}) like CONCAT('%',#{account_id}, '%')
+        </if>
+        <if test="account_name != null and account_name !=''">
+            and t1.account_name like CONCAT('%',#{account_name},'%')
+        </if>
+        <if test="account_dormant != null and account_dormant !=''">
+            and t1.account_dormant like CONCAT('%',#{account_dormant},'%')
+        </if>
+        <if test="business_info_flag != null and business_info_flag !=''">
+            and t1.business_info_flag IN
+            <foreach collection="business_info_flag" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="vip_grade != null and vip_grade !=''">
+            and t1.vip_grade like CONCAT('%',#{vip_grade},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(t1.reg_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(t1.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+    </select>
+
+    <update id="updateBusinessInfoFlag" parameterType="UserManagementVO">
+        -- 		updateBusinessInfoFlag
+        UPDATE TBL_ACCOUNT
+        SET
+        business_info_flag = #{business_info_flag}
+
+        WHERE 1=1
+        <if test="account_id != null and account_id != ''">
+          and AES_DECRYPT(UNHEX(account_id),#{aes_key}) = #{account_id}
+        </if>
+        <if test="account_id_list != null and account_id_list.size != 0">
+            AND AES_DECRYPT(UNHEX(account_id),#{aes_key}) IN
+            <foreach collection="account_id_list" item="item" index="index" separator="," open="(" close=")">
+            #{item}
+            </foreach>
+        </if>
+    </update>
+
+    <update id="updateVipGrade" parameterType="UserManagementVO">
+        -- 		updateVipGrade
+        UPDATE TBL_ACCOUNT
+        SET
+        vip_grade = #{vip_grade}
+
+        WHERE 1=1
+        <if test="account_id != null and account_id != ''">
+        and AES_DECRYPT(UNHEX(account_id),#{aes_key}) = #{account_id}
+        </if>
+        <if test="account_id_list != null and account_id_list.size != 0">
+        AND AES_DECRYPT(UNHEX(account_id),#{aes_key}) IN
+        <foreach collection="account_id_list" item="item" index="index" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+        </if>
+    </update>
+
+    <select id="selectUserList" resultType="UserManagementVO">
+        -- 		selectUserList
+        SELECT * FROM (SELECT
+        AES_DECRYPT(UNHEX(t1.account_id),#{aes_key}) as account_id
+        , t1.account_name
+        , AES_DECRYPT(UNHEX(t1.account_email),#{aes_key}) as account_email
+        , t1.grade_id
+        , date_format(t1.last_login, '%Y-%m-%d %H:%i:%S') as last_login
+        , date_format(t1.reg_dt, '%Y-%m-%d %H:%i:%S') as reg_dt
+        , t1.account_no
+        , t1.account_dormant
+        , t1.vip_grade
+
+        FROM TBL_ACCOUNT t1
+
+        WHERE 1=1
+        AND t1.grade_id = 5
+        <if test="account_id != null and account_id !=''">
+            and AES_DECRYPT(UNHEX(t1.account_id),#{aes_key}) like CONCAT('%',#{account_id}, '%')
+        </if>
+        <if test="account_name != null and account_name !=''">
+            and t1.account_name like CONCAT('%',#{account_name},'%')
+        </if>
+        <if test="account_email != null and account_email !=''">
+            and AES_DECRYPT(UNHEX(t1.account_email),#{aes_key}) like CONCAT('%',#{account_email},'%')
+        </if>
+        <if test="account_dormant != null and account_dormant !=''">
+            and t1.account_dormant like CONCAT('%',#{account_dormant},'%')
+        </if>
+        <if test="business_info_flag != null and business_info_flag !=''">
+            and t1.business_info_flag IN
+            <foreach collection="business_info_flag" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="vip_grade != null and vip_grade !=''">
+            and t1.vip_grade like CONCAT('%',#{vip_grade},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(t1.reg_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(t1.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.account_no desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectUserListTotal" resultType="Integer">
+        -- 		selectUserListTotal
+        SELECT
+        count(*)
+
+        FROM TBL_ACCOUNT t1
+
+        WHERE 1=1
+        AND t1.grade_id = 5
+        <if test="account_id != null and account_id !=''">
+            and AES_DECRYPT(UNHEX(t1.account_id),#{aes_key}) like CONCAT('%',#{account_id}, '%')
+        </if>
+        <if test="account_name != null and account_name !=''">
+            and t1.account_name like CONCAT('%',#{account_name},'%')
+        </if>
+        <if test="account_email != null and account_email !=''">
+            and AES_DECRYPT(UNHEX(t1.account_email),#{aes_key}) like CONCAT('%',#{account_email},'%')
+        </if>
+        <if test="account_dormant != null and account_dormant !=''">
+            and t1.account_dormant like CONCAT('%',#{account_dormant},'%')
+        </if>
+        <if test="business_info_flag != null and business_info_flag !=''">
+            and t1.business_info_flag IN
+            <foreach collection="business_info_flag" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="vip_grade != null and vip_grade !=''">
+            and t1.vip_grade like CONCAT('%',#{vip_grade},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(t1.reg_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(t1.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+
+        ORDER BY
+        t1.account_no desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectUserDetail" resultType="UserManagementVO">
+        -- 		selectUserDetail
+        SELECT
+            t1.vip_grade
+          , t1.account_name
+          , AES_DECRYPT(UNHEX(t1.account_id), #{aes_key}) as account_id
+          , t1.account_dormant
+          , t1.business_info_flag
+          , t1.account_no
+          , date_format(t1.reg_dt, '%Y-%m-%d %H:%i:%S') as reg_dt
+          , date_format(t1.last_login, '%Y-%m-%d %H:%i:%S') as last_login
+          , AES_DECRYPT(UNHEX(t1.account_phone), #{aes_key}) as account_phone
+          , AES_DECRYPT(UNHEX(t1.account_email), #{aes_key}) as account_email
+          , t2.company_num
+          , t2.online_marketing_num
+          , t2.chief_name
+          , t2.store_name
+          , t2.store_introduce
+          , t2.company_zip
+          , t2.company_addr1
+          , t2.company_addr2
+          , t2.company_phone
+          , t2.company_email
+          , t2.bank_name
+          , t2.account_num
+          , t2.depositor
+          , (select concat('(', t3.book_zip, ')', ' ', t3.book_addr, ' ', t3.book_addr_detail) from TBL_ADDRESS_BOOK t3 where t1.account_id = t3.account_id and t3.addr_distinguish = '대표 출고지') as forwarding_address
+          , (select concat('(', t3.book_zip, ')', ' ', t3.book_addr, ' ', t3.book_addr_detail) from TBL_ADDRESS_BOOK t3 where t1.account_id = t3.account_id and t3.addr_distinguish = '대표 반품지') as return_address
+          , (select sum(t101.cal_price)
+
+             from TBL_CALCULATE_INFO t101
+
+             where 1=1
+             and t1.account_id = t101.account_id
+             and t101.cal_state = '정산예정'
+             ) as cal_predict_price
+        , (select count(*)
+
+           from TBL_PRODUCT_LIST t101
+
+           where 1=1
+           and t1.account_id = t101.account_id
+           and t101.sell_type = '위탁판매'
+           ) as consignment_sale_count
+        , (select count(*)
+
+           from TBL_PRODUCT_LIST t101
+
+           where 1=1
+             and t1.account_id = t101.account_id
+             and t101.sell_type = '직접판매'
+        ) as direct_sale_count
+        , (select count(*)
+
+           from TBL_OFFER_MANAGEMENT t101
+
+           where 1=1
+           and t101.account_id = t1.account_id
+           and t101.sort_type = '기부'
+           ) as donate_count
+          , (select count(*)
+
+             from TBL_OFFER_MANAGEMENT t101
+
+             where 1=1
+             and t101.account_id = t1.account_id
+             and t101.sort_type = '폐기'
+        ) as discard_count
+          , (select count(*)
+
+             from TBL_OFFER_MANAGEMENT t101
+
+             where 1=1
+             and t101.account_id = t1.account_id
+             and t101.sort_type = '회수'
+        ) as recovery_count
+        , (select sum(t101.order_product_count)
+
+           from TBL_REQUEST_ORDER t101
+           left join TBL_ACCOUNT t201 on t101.account_id = t201.account_id
+
+           where 1=1
+           and date_format(t101.order_request_dt, '%m') = date_format(now(), '%m')
+           and t201.account_id = t1.account_id
+           ) as monthly_buy_count
+        , (select sum(t101.order_product_count * t201.product_price)
+
+           from TBL_REQUEST_ORDER t101
+           left join TBL_PRODUCT_LIST t201 on t101.product_id = t201.product_id
+
+           where t101.account_id = t1.account_id) as monthly_buy_price
+
+        from TBL_ACCOUNT t1
+        left join TBL_BUSINESS_INFO t2 on t1.account_id = t2.account_id
+
+        where 1=1
+        and AES_DECRYPT(UNHEX(t1.account_id),#{aes_key}) = #{account_id}
+    </select>
+
+    <select id="selectSellerDetailList_consignment" resultType="ConsignmentVO">
+        -- 		selectSellerDetailList_consignment
+        SELECT t101.*
+        FROM (
+        SELECT
+        t1.product_id
+        , t1.seller
+        , tpi.product_grade
+        , t1.product_vprice
+        , t1.product_price
+        , t1.product_name
+        , t1.product_count
+        , t1.product_visit
+        , t1.product_soldout_dt
+        , date_format(t1.product_selling_dt, '%Y-%m-%d') as product_selling_dt
+        , t1.product_score
+        , t1.category_id
+        , (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id AND state NOT IN ('최종 검수 대기', '보관중') order by thp.history_id
+        DESC LIMIT 1) as product_state
+        , if(t2.parent_category_id is null , null, if(t3.parent_category_id is null , null, t2.category_name)) as
+        minName
+        , if(t2.parent_category_id is null , null ,if(t3.parent_category_id is null , t2.category_name ,
+        t3.category_name)) as mediumName
+        , if(t2.parent_category_id is null , t2.category_name ,if(t3.parent_category_id is null , t3.category_name,
+        t4.category_name)) as maxName
+        , if(t2.parent_category_id is null, t2.category_name, if(t3.parent_category_id is null, CONCAT(t3.category_name
+        ,<![CDATA['>']]>,t2.category_name),CONCAT(t3.category_name,<![CDATA['>']]>,t2.category_name,<![CDATA['>']]>
+        ,t4.category_name))
+        ) as category_name
+
+        FROM TBL_PRODUCT_LIST t1
+        left join TBL_PRODUCT_CATEGORY t2 on t1.category_id = t2.category_id
+        left join TBL_PRODUCT_CATEGORY t3 on t2.parent_category_id = t3.category_id
+        left join TBL_PRODUCT_CATEGORY t4 on t3.parent_category_id = t4.category_id
+        left join TBL_PRODUCT_INSPECTION tpi ON t1.product_id = tpi.product_id
+        left join TBL_ACCOUNT t5 on t1.account_id = t5.account_id
+
+        WHERE 1 = 1
+        and sell_type = '위탁판매'
+        and grade_id = 4
+        <if test="account_id != null and account_id !=''">
+            and AES_DECRYPT(UNHEX(t1.account_id),#{aes_key}) = #{account_id}
+        </if>
+        <if test="product_id != null and product_id !=''">
+            and product_id like CONCAT('%',#{product_id},'%')
+        </if>
+        <if test="category_id != null and category_id !=''">
+            and t1.category_id = #{category_id}
+        </if>
+        <if test="parent_category_id != null and parent_category_id !=''">
+            and t3.category_id = #{parent_category_id}
+        </if>
+        <if test="product_name != null and product_name !=''">
+            and product_name like CONCAT('%',#{product_name},'%')
+        </if>
+        <if test="mediumName != null and mediumName !='' and mediumName != '전체'">
+            and t2.category_name like CONCAT('%',#{mediumName},'%')
+        </if>
+        <if test="product_grade != null and product_grade !=''">
+            and tpi.product_grade IN
+            <foreach collection="product_grade" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(product_selling_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(product_selling_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        WHERE 1=1
+        <if test="product_state != null and product_state !=''">
+            and t101.product_state IN
+            <foreach collection="product_state" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.product_id desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectSellerDetailListTotal_consignment" resultType="Integer">
+        -- 		selectSellerDetailListTotal_consignment
+        SELECT count(*)
+        FROM (
+        SELECT
+        t1.product_id
+        , t1.seller
+        , t1.product_grade
+        , t1.product_vprice
+        , t1.product_price
+        , t1.product_name
+        , t1.product_count
+        , t1.product_visit
+        , t1.product_soldout_dt
+        , date_format(t1.product_selling_dt, '%Y-%m-%d') as product_selling_dt
+        , t1.product_score
+        , t1.category_id
+        , (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id AND state NOT IN ('최종 검수 대기', '보관중') order by thp.history_id
+        DESC LIMIT 1) as product_state
+        , if(t2.parent_category_id is null , null, if(t3.parent_category_id is null , null, t2.category_name)) as
+        minName
+        , if(t2.parent_category_id is null , null ,if(t3.parent_category_id is null , t2.category_name ,
+        t3.category_name)) as mediumName
+        , if(t2.parent_category_id is null , t2.category_name ,if(t3.parent_category_id is null , t3.category_name,
+        t4.category_name)) as maxName
+        , if(t2.parent_category_id is null, t2.category_name, if(t3.parent_category_id is null, CONCAT(t3.category_name
+        ,<![CDATA['>']]>,t2.category_name),CONCAT(t3.category_name,<![CDATA['>']]>,t2.category_name,<![CDATA['>']]>
+        ,t4.category_name))
+        ) as category_name
+
+        FROM TBL_PRODUCT_LIST t1
+        left join TBL_PRODUCT_CATEGORY t2 on t1.category_id = t2.category_id
+        left join TBL_PRODUCT_CATEGORY t3 on t2.parent_category_id = t3.category_id
+        left join TBL_PRODUCT_CATEGORY t4 on t3.parent_category_id = t4.category_id
+        left join TBL_PRODUCT_INSPECTION tpi ON t1.product_id = tpi.product_id
+        left join TBL_ACCOUNT t5 on t1.account_id = t5.account_id
+
+        WHERE 1 = 1
+        and sell_type = '위탁판매'
+        and grade_id = 4
+        <if test="account_id != null and account_id !=''">
+            and AES_DECRYPT(UNHEX(t1.account_id),#{aes_key}) = #{account_id}
+        </if>
+        <if test="product_id != null and product_id !=''">
+            and product_id like CONCAT('%',#{product_id},'%')
+        </if>
+        <if test="category_id != null and category_id !=''">
+            and t1.category_id = #{category_id}
+        </if>
+        <if test="parent_category_id != null and parent_category_id !=''">
+            and t3.category_id = #{parent_category_id}
+        </if>
+        <if test="product_name != null and product_name !=''">
+            and product_name like CONCAT('%',#{product_name},'%')
+        </if>
+        <if test="mediumName != null and mediumName !='' and mediumName != '전체'">
+            and t2.category_name like CONCAT('%',#{mediumName},'%')
+        </if>
+        <if test="product_grade != null and product_grade !=''">
+            and tpi.product_grade IN
+            <foreach collection="product_grade" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(product_selling_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(product_selling_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        WHERE 1=1
+        <if test="product_state != null and product_state !=''">
+            and t101.product_state IN
+            <foreach collection="product_state" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="selectSellerDetailList_direct" resultType="ConsignmentVO">
+        -- 		selectSellerDetailList_direct
+        SELECT t101.*
+        FROM (
+        SELECT
+        t1.product_id
+        , t1.seller
+        , tpi.product_grade
+        , t1.product_vprice
+        , t1.product_price
+        , t1.product_name
+        , t1.product_count
+        , t1.product_visit
+        , t1.product_soldout_dt
+        , date_format(t1.product_selling_dt, '%Y-%m-%d') as product_selling_dt
+        , t1.product_score
+        , t1.category_id
+        , (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id AND state NOT IN ('최종 검수 대기', '보관중') order by thp.history_id
+        DESC LIMIT 1) as product_state
+        , if(t2.parent_category_id is null , null, if(t3.parent_category_id is null , null, t2.category_name)) as
+        minName
+        , if(t2.parent_category_id is null , null ,if(t3.parent_category_id is null , t2.category_name ,
+        t3.category_name)) as mediumName
+        , if(t2.parent_category_id is null , t2.category_name ,if(t3.parent_category_id is null , t3.category_name,
+        t4.category_name)) as maxName
+        , if(t2.parent_category_id is null, t2.category_name, if(t3.parent_category_id is null, CONCAT(t3.category_name
+        ,<![CDATA['>']]>,t2.category_name),CONCAT(t3.category_name,<![CDATA['>']]>,t2.category_name,<![CDATA['>']]>
+        ,t4.category_name))
+        ) as category_name
+
+        FROM TBL_PRODUCT_LIST t1
+        left join TBL_PRODUCT_CATEGORY t2 on t1.category_id = t2.category_id
+        left join TBL_PRODUCT_CATEGORY t3 on t2.parent_category_id = t3.category_id
+        left join TBL_PRODUCT_CATEGORY t4 on t3.parent_category_id = t4.category_id
+        left join TBL_PRODUCT_INSPECTION tpi ON t1.product_id = tpi.product_id
+        left join TBL_ACCOUNT t5 on t1.account_id = t5.account_id
+
+        WHERE 1 = 1
+        and sell_type = '직접판매'
+        and grade_id = 4
+        <if test="account_id != null and account_id !=''">
+            and AES_DECRYPT(UNHEX(t1.account_id),#{aes_key}) = #{account_id}
+        </if>
+        <if test="product_id != null and product_id !=''">
+            and product_id like CONCAT('%',#{product_id},'%')
+        </if>
+        <if test="category_id != null and category_id !=''">
+            and t1.category_id = #{category_id}
+        </if>
+        <if test="parent_category_id != null and parent_category_id !=''">
+            and t3.category_id = #{parent_category_id}
+        </if>
+        <if test="product_name != null and product_name !=''">
+            and product_name like CONCAT('%',#{product_name},'%')
+        </if>
+        <if test="mediumName != null and mediumName !='' and mediumName != '전체'">
+            and t2.category_name like CONCAT('%',#{mediumName},'%')
+        </if>
+        <if test="product_grade != null and product_grade !=''">
+            and tpi.product_grade IN
+            <foreach collection="product_grade" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(product_selling_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(product_selling_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        WHERE 1=1
+        <if test="product_state != null and product_state !=''">
+            and t101.product_state IN
+            <foreach collection="product_state" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.product_id desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectSellerDetailListTotal_direct" resultType="Integer">
+        -- 		selectSellerDetailListTotal_direct
+        SELECT count(*)
+        FROM (
+        SELECT
+        t1.product_id
+        , t1.seller
+        , t1.product_grade
+        , t1.product_vprice
+        , t1.product_price
+        , t1.product_name
+        , t1.product_count
+        , t1.product_visit
+        , t1.product_soldout_dt
+        , date_format(t1.product_selling_dt, '%Y-%m-%d') as product_selling_dt
+        , t1.product_score
+        , t1.category_id
+        , (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id AND state NOT IN ('최종 검수 대기', '보관중') order by thp.history_id
+        DESC LIMIT 1) as product_state
+        , if(t2.parent_category_id is null , null, if(t3.parent_category_id is null , null, t2.category_name)) as
+        minName
+        , if(t2.parent_category_id is null , null ,if(t3.parent_category_id is null , t2.category_name ,
+        t3.category_name)) as mediumName
+        , if(t2.parent_category_id is null , t2.category_name ,if(t3.parent_category_id is null , t3.category_name,
+        t4.category_name)) as maxName
+        , if(t2.parent_category_id is null, t2.category_name, if(t3.parent_category_id is null, CONCAT(t3.category_name
+        ,<![CDATA['>']]>,t2.category_name),CONCAT(t3.category_name,<![CDATA['>']]>,t2.category_name,<![CDATA['>']]>
+        ,t4.category_name))
+        ) as category_name
+
+        FROM TBL_PRODUCT_LIST t1
+        left join TBL_PRODUCT_CATEGORY t2 on t1.category_id = t2.category_id
+        left join TBL_PRODUCT_CATEGORY t3 on t2.parent_category_id = t3.category_id
+        left join TBL_PRODUCT_CATEGORY t4 on t3.parent_category_id = t4.category_id
+        left join TBL_PRODUCT_INSPECTION tpi ON t1.product_id = tpi.product_id
+        left join TBL_ACCOUNT t5 on t1.account_id = t5.account_id
+
+        WHERE 1 = 1
+        and sell_type = '직접판매'
+        and grade_id = 4
+        <if test="account_id != null and account_id !=''">
+            and AES_DECRYPT(UNHEX(t1.account_id),#{aes_key}) = #{account_id}
+        </if>
+        <if test="product_id != null and product_id !=''">
+            and product_id like CONCAT('%',#{product_id},'%')
+        </if>
+        <if test="category_id != null and category_id !=''">
+            and t1.category_id = #{category_id}
+        </if>
+        <if test="parent_category_id != null and parent_category_id !=''">
+            and t3.category_id = #{parent_category_id}
+        </if>
+        <if test="product_name != null and product_name !=''">
+            and product_name like CONCAT('%',#{product_name},'%')
+        </if>
+        <if test="mediumName != null and mediumName !='' and mediumName != '전체'">
+            and t2.category_name like CONCAT('%',#{mediumName},'%')
+        </if>
+        <if test="product_grade != null and product_grade !=''">
+            and tpi.product_grade IN
+            <foreach collection="product_grade" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(product_selling_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(product_selling_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        WHERE 1=1
+        <if test="product_state != null and product_state !=''">
+            and t101.product_state IN
+            <foreach collection="product_state" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="selectBusinessImage" parameterType="UserManagementVO" resultType="Integer">
+--         selectBusinessImage
+        select
+            file_id
+        from TBL_Business_Image
+        where 1=1
+          and AES_DECRYPT(UNHEX(account_id),#{aes_key}) = #{account_id}
+    </select>
+
+    <select id="selectOnlineMarketingImage" parameterType="UserManagementVO" resultType="Integer">
+--         selectOnlineMarketingImage
+        select
+            file_id
+        from TBL_Online_Marketing_Image
+        where 1=1
+          and AES_DECRYPT(UNHEX(account_id),#{aes_key}) = #{account_id}
+    </select>
+
+    <select id="selectStoreImage" parameterType="UserManagementVO" resultType="Integer">
+--         selectStoreImage
+        select
+            file_id
+        from TBL_Store_Image
+        where 1=1
+          and AES_DECRYPT(UNHEX(account_id),#{aes_key}) = #{account_id}
+    </select>
+
+</mapper>

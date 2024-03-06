@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="OfferManagement" >
+
+    <select id="selectOfferCount" resultType="OfferManagementVO">
+        -- 		selectOfferCount
+        SELECT
+            count(case when sort_type = '기부' then 1 end) as donate_count
+           ,count(case when sort_type  = '폐기' then 1 end) as discard_count
+           ,count(case when sort_type  = '회수' then 1 end) as recovery_count
+
+        FROM TBL_OFFER_MANAGEMENT
+
+        WHERE 1=1
+    </select>
+
+    <select id="selectOfferList" resultType="OfferManagementVO">
+        -- 		selectOfferList
+        SELECT * FROM (SELECT
+          t1.offer_no
+          , t1.product_id
+          , AES_DECRYPT(UNHEX(t1.account_id), #{aes_key}) as account_id
+          , if(t3.parent_category_id is null, t3.category_name, if(t4.parent_category_id is null, CONCAT(t4.category_name,<![CDATA['>']]>,t3.category_name),CONCAT(t4.category_name,<![CDATA['>']]>,t3.category_name))
+          ) as category_name
+          , t2.product_name
+          , t2.product_count
+          , t1.sort_type
+          , date_format(t1.reg_dt, '%Y-%m-%d') as reg_dt
+          , t1.pay_state
+          , t5.account_name
+
+        FROM TBL_OFFER_MANAGEMENT t1
+        left join TBL_PRODUCT_LIST t2 on t1.product_id = t2.product_id
+        left join TBL_PRODUCT_CATEGORY t3 on t2.category_id = t3.category_id
+        left join TBL_PRODUCT_CATEGORY t4 on t3.parent_category_id = t4.category_id
+        left join TBL_ACCOUNT t5 on t1.account_id = t5.account_id
+
+        WHERE 1=1
+        <if test="product_id != null and product_id !=''">
+            and t1.product_id like CONCAT('%',#{product_id},'%')
+        </if>
+        <if test="category_id != null and category_id !=''">
+            and t2.category_id = #{category_id}
+        </if>
+        <if test="parent_category_id != null and parent_category_id !=''">
+            and t4.category_id = #{parent_category_id}
+        </if>
+        <if test="product_name != null and product_name !=''">
+            and t2.product_name like CONCAT('%',#{product_name},'%')
+        </if>
+        <if test="sort_type != null and sort_type !=''">
+            AND t1.sort_type in
+            <foreach collection="sort_type" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(t1.reg_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(t1.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.offer_no desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectOfferListTotal" resultType="Integer">
+        -- 		selectOfferListTotal
+        SELECT
+        count(*)
+
+        FROM TBL_OFFER_MANAGEMENT t1
+        left join TBL_PRODUCT_LIST t2 on t1.product_id = t2.product_id
+        left join TBL_PRODUCT_CATEGORY t3 on t2.category_id = t3.category_id
+        left join TBL_PRODUCT_CATEGORY t4 on t3.parent_category_id = t4.category_id
+        left join TBL_ACCOUNT t5 on t1.account_id = t5.account_id
+
+        WHERE 1=1
+        <if test="product_id != null and product_id !=''">
+            and t1.product_id like CONCAT('%',#{product_id},'%')
+        </if>
+        <if test="category_id != null and category_id !=''">
+            and t2.category_id = #{category_id}
+        </if>
+        <if test="parent_category_id != null and parent_category_id !=''">
+            and t4.category_id = #{parent_category_id}
+        </if>
+        <if test="product_name != null and product_name !=''">
+            and t2.product_name like CONCAT('%',#{product_name},'%')
+        </if>
+        <if test="sort_type != null and sort_type !=''">
+            AND t1.sort_type in
+            <foreach collection="sort_type" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(t1.reg_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(t1.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+    </select>
+
+    <insert id="insertDisabledProduct">
+        INSERT INTO TBL_OFFER_MANAGEMENT (
+                                            account_id
+                                          , product_id
+                                          , sort_type
+                                          ,
+
+
+        ) values (
+                     #{product_id}
+                 )
+    </insert>
+
+    <select id="selectOfferDetail" resultType="OfferManagementVO">
+--         selectOfferDetail
+        SELECT
+               t2.product_name
+             , t2.product_count
+             , t1.product_id
+             , if(t3.parent_category_id is null, t3.category_name, if(t4.parent_category_id is null, CONCAT(t4.category_name
+             , <![CDATA['>']]>, t3.category_name), CONCAT(t4.category_name, <![CDATA['>']]>, t3.category_name, <![CDATA['>']]>
+             , t5.category_name))) as category_name
+             , t1.sort_type
+             , t1.payment_method
+             , t1.donate_receipt
+             , t1.issuance_sorting
+             , t1.phone_number
+             , t1.payment_price
+             , t1.discard_zip
+             , t1.discard_addr
+             , t1.discard_addr_detail
+             , t1.pay_state
+             , date_format(t1.reg_dt, '%Y-%m-%d') as reg_dt
+             , date_format(t1.pay_dt, '%Y-%m-%d') as pay_dt
+
+
+        from TBL_OFFER_MANAGEMENT t1
+        left join TBL_PRODUCT_LIST t2 on t1.product_id = t2.product_id
+        left join TBL_PRODUCT_CATEGORY t3 on t2.category_id = t3.category_id
+        left join TBL_PRODUCT_CATEGORY t4 on t3.parent_category_id = t4.category_id
+        left join TBL_PRODUCT_CATEGORY t5 on t4.parent_category_id = t5.category_id
+
+        WHERE t1.product_id = #{product_id}
+    </select>
+
+    <select id="selectProductDetail" parameterType="ProductListVO" resultType="ProductListVO">
+--         selectProductDetail
+        select
+            if(t2.parent_category_id is null, t2.category_name, if(t3.parent_category_id is null, CONCAT(t3.category_name
+            , <![CDATA['>']]>, t2.category_name), CONCAT(t3.category_name, <![CDATA['>']]>, t2.category_name, <![CDATA['>']]>
+            , t4.category_name))) as category_name
+            , t1.product_name
+            , t1.product_count
+            , t1.product_id
+            , AES_DECRYPT(UNHEX(t1.account_id),#{aes_key})
+
+        from TBL_PRODUCT_LIST t1
+        left join TBL_PRODUCT_CATEGORY t2 on t1.category_id = t2.category_id
+        left join TBL_PRODUCT_CATEGORY t3 on t2.parent_category_id = t3.category_id
+        left join TBL_PRODUCT_CATEGORY t4 on t3.parent_category_id = t4.category_id
+
+        where t1.product_id = #{product_id}
+    </select>
+
+    <insert id="insertDiscardBasic" parameterType="OfferManagementVO">
+--         insertDiscardBasic
+        INSERT INTO TBL_OFFER_MANAGEMENT (
+                                           account_id
+                                         , product_id
+                                         , payment_method
+                                         , payment_price
+                                         , sort_type
+        )
+        values (
+                   HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+               , #{product_id}
+               , #{payment_method}
+               , #{payment_price}
+               , #{sort_type}
+               )
+    </insert>
+
+    <insert id="insertRecoveryBasic" parameterType="OfferManagementVO">
+--         insertRecoveryBasic
+        INSERT INTO TBL_OFFER_MANAGEMENT (
+                                           discard_zip
+                                         , discard_addr
+                                         , discard_addr_detail
+                                         , payment_price
+                                         , payment_method
+                                         , account_id
+                                         , product_id
+                                         , sort_type
+        )
+        values (
+                   #{discard_zip}
+               , #{discard_addr}
+               , #{discard_addr_detail}
+               , #{payment_price}
+               , #{payment_method}
+               , HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+               , #{product_id}
+               , #{sort_type}
+               )
+    </insert>
+
+    <insert id="insertHistory_product" parameterType="OfferManagementVO">
+        INSERT INTO TBL_HISTORY_PRODUCT (
+                                          product_id
+                                        , state
+        )
+        values (
+                   #{product_id}
+               , #{sort_type}
+               )
+    </insert>
+</mapper>

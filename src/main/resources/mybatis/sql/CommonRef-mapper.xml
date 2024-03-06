@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<!-- 각각의 맵퍼에서 공통으로 사용하는 Query문들을 참조하도록 함. -->
+<!-- Naming: ref + Query종류 + Name -->
+<!-- ex) refSelectAreaName -->
+<mapper namespace="commonRef" >
+
+	<!-- Building/Zone/Cell Name을 조회할 때 공통으로 사용. -->
+	<!-- <sql id="refSelectAreaName">
+		<if test="locale == 'en'">
+		 ,TB.building_name_eng as building_name
+		 ,TZ.floor_eng as zone_name
+		 ,TC.cell_name_eng as cell_name
+		</if>
+		<if test="locale != 'en'">
+		  ,TB.building_name
+		  ,TZ.floor as zone_name
+		  ,TC.cell_name
+		</if>
+	</sql> -->
+	
+	<!-- Building/Zone/Cell Name을 조회할 때 공통으로 사용. -->
+	<sql id="refSelectAreaName">
+		<if test="locale == 'en' and device_type != null and device_type != ''">
+		 ,(SELECT building_name_eng FROM TBL_BUILDING WHERE building_id = (SELECT building_id FROM TBL_MAPPING_DEVICE where device_type = #{device_type})) AS building_name
+		 ,TZ.floor_eng as zone_name
+		 ,TC.cell_name_eng as cell_name
+		</if>
+		<if test="locale != 'en' and device_type != null and device_type != ''">
+		  ,(SELECT building_name FROM TBL_BUILDING WHERE building_id = (SELECT building_id FROM TBL_MAPPING_DEVICE where device_type = #{device_type})) AS building_name
+		  ,TZ.floor as zone_name
+		  ,TC.cell_name
+		</if>
+	</sql>
+	
+	<!-- <sql id="refJoinAreaTables">
+  	  <if test="device_id != null and device_id != ''">
+		LEFT OUTER JOIN TBL_MAPPING_DEVICE TM ON TM.mac_addr = #{device_id} AND TM.site_id = #{site_id}
+  	  </if>
+  	  <if test="device_id == null and mac_addr != null and mac_addr != ''">
+		LEFT OUTER JOIN TBL_MAPPING_DEVICE TM ON TM.mac_addr = #{mac_addr} AND TM.site_id = #{site_id}
+  	  </if>
+  	  <if test="device_id == null and mac_addr == null and device_type != null and device_type != ''">
+		LEFT OUTER JOIN TBL_MAPPING_DEVICE TM ON TM.device_type = #{device_type} AND TM.site_id = #{site_id}
+  	  </if>
+        LEFT OUTER JOIN TBL_BUILDING TB ON TB.building_id = TB.building_id AND TB.site_id = #{site_id}
+        LEFT OUTER JOIN TBL_ZONE TZ ON TZ.zone_id = TM.zone_id AND TZ.site_id = #{site_id}
+        LEFT OUTER JOIN TBL_CELL TC ON TC.cell_id = TM.cell_id AND TC.site_id = #{site_id}
+  	</sql> -->
+  	
+  	<sql id="refJoinAreaTables">
+  	  <if test="device_id != null and device_id != ''">
+		LEFT OUTER JOIN TBL_MAPPING_DEVICE TM ON TM.mac_addr = #{device_id} AND TM.site_id = #{site_id}
+  	  </if>
+  	  <if test="device_id == null and mac_addr != null and mac_addr != ''">
+		LEFT OUTER JOIN TBL_MAPPING_DEVICE TM ON TM.mac_addr = #{mac_addr} AND TM.site_id = #{site_id}
+  	  </if>
+  	  <if test="device_id == null and mac_addr == null and device_type != null and device_type != ''">
+		LEFT OUTER JOIN TBL_MAPPING_DEVICE TM ON TM.device_type = #{device_type} AND TM.site_id = #{site_id}
+  	  </if>
+        LEFT OUTER JOIN TBL_ZONE TZ ON TZ.zone_id = TM.zone_id AND TZ.site_id = #{site_id}
+        LEFT OUTER JOIN TBL_CELL TC ON TC.cell_id = TM.cell_id AND TC.site_id = #{site_id}
+  	</sql>
+	
+
+</mapper>

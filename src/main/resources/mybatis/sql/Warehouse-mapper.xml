@@ -1,0 +1,992 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="warehouse" >
+
+	<select id="selectStockProductInfo" resultType="WarehouseVO" parameterType="WarehouseVO">
+		SELECT tpl.product_id
+			 , tpl.product_name
+			 , trr.return_reason
+			 , trr.tracking_number as tracking_no
+		FROM TBL_PRODUCT_LIST tpl
+			INNER JOIN TBL_REQUEST_RETURN trr ON trr.product_id = tpl.product_id
+		where 1=1
+		<if test="tracking_no != null and tracking_no != ''">
+		AND trr.tracking_number = #{tracking_no}
+		</if>
+		<if test="product_id != null and product_id != ''">
+		AND tpl.product_id = #{product_id}
+		</if>
+		<if test="product_barcode != null and product_barcode != ''">
+		AND tpl.product_barcode = #{product_barcode}
+		</if>
+	</select>
+
+	<select id="selectReleaseProductInfo" resultType="WarehouseVO" parameterType="WarehouseVO">
+		SELECT tpl.product_id
+			 , tpl.product_name
+			 , tro.tracking_number as tracking_no
+			 , tro.order_name
+			 , tro.smartstore_order_no as order_no
+		FROM TBL_PRODUCT_LIST tpl
+				 LEFT JOIN TBL_REQUEST_ORDER tro ON tro.product_id = tpl.product_id
+		where 1=1 AND tpl.product_status != "판매중지"
+		<if test="tracking_no != null and tracking_no != ''">
+		AND tro.tracking_number = #{tracking_no}
+		</if>
+		<if test="product_id != null and product_id != ''">
+		AND tpl.product_id = #{product_id}
+		</if>
+		<if test="product_barcode != null and product_barcode != ''">
+		AND tpl.product_barcode = #{product_barcode}
+		</if>
+		LIMIT 1
+	</select>
+
+	<select id="selectProductInspection" parameterType="hashmap" resultType="InspectionVO">
+		SELECT * FROM (SELECT
+			DATE_FORMAT(tpi.reg_dt, '%Y-%m-%d %H:%i') AS reg_dt,
+			tpi.product_grade,
+			tpi.inspection_opinion,
+			tpi.check_yn,
+			tpi.video_state,
+			tpi.picture_state,
+			DATE_FORMAT(tpi.inspection_dt,'%y-%m-%d %H:%i') as inspection_dt,
+			trr.tracking_number,
+			tpl.product_id,
+			tpl.product_count,
+			tpl.product_name,
+			tpl.product_barcode,
+			tpl.sell_type,
+			tr.rack_id,
+			tr.rack_name,
+			ta.account_name as seller_name,
+			trr.purchaser_name
+		FROM TBL_PRODUCT_INSPECTION tpi
+			INNER JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tpi.product_id
+			INNER JOIN TBL_REQUEST_RETURN trr ON trr.product_id = tpi.product_id
+			LEFT JOIN TBL_RACK_PRODUCT trp ON trp.product_id = tpi.product_id
+			LEFT JOIN TBL_RACK tr ON tr.rack_id = trp.rack_id
+			LEFT JOIN TBL_ACCOUNT ta ON ta.account_id = tpl.account_id
+		WHERE 1 = 1
+		    AND tpi.check_yn IS NOT NULL
+			<if test="product_name != null and product_name !=''">
+				AND product_name LIKE CONCAT('%',#{product_name},'%')
+			</if>
+			<if test="seller_name != null and seller_name != ''">
+				AND (ta.account_name) LIKE CONCAT('%',#{seller_name},'%')
+			</if>
+			<if test="purchaser_name != null and purchaser_name != ''">
+				AND purchaser_name LIKE CONCAT('%',#{purchaser_name},'%')
+			</if>
+			<if test="product_id != null and product_id != ''">
+				AND tpl.product_id LIKE CONCAT('%',#{product_id},'%')
+			</if>
+			<if test="tracking_number != null and tracking_number != ''">
+				AND tracking_number LIKE CONCAT('%',#{tracking_number},'%')
+			</if>
+			<if test="check_yn != null and check_yn != ''">
+			    AND check_yn = #{check_yn}
+			</if>
+			<if test="sell_type != null and sell_type != ''">
+			    AND tpl.sell_type = #{sell_type}
+			</if>
+	       	<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+	        	AND (date_format(tpi.reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND
+	        	date_format(tpi.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+	       	</if>
+		) as t101
+		ORDER by
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+		t101.reg_dt desc
+         LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+	</select>
+
+
+	<select id="selectProductInspectionTotal" resultType="Integer" parameterType="HashMap">
+-- 		selectProductInspectionTotal
+		SELECT count(*)
+		FROM (
+			SELECT
+			DATE_FORMAT(tpi.reg_dt, '%Y-%m-%d %H:%i') AS reg_dt,
+			tpi.product_grade,
+			tpi.inspection_opinion,
+			tpi.check_yn,
+			tpi.video_state,
+			tpi.picture_state,
+			DATE_FORMAT(tpi.inspection_dt,'%y-%m-%d %H:%i') as inspection_dt,
+			trr.tracking_number,
+			tpl.product_id,
+			tpl.product_count,
+			tpl.product_name,
+			tpl.product_barcode,
+			tpl.sell_type,
+			tr.rack_id,
+			tr.rack_name,
+			ta.account_name as seller_name,
+			trr.purchaser_name
+		FROM TBL_PRODUCT_INSPECTION tpi
+			INNER JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tpi.product_id
+			INNER JOIN TBL_REQUEST_RETURN trr ON trr.product_id = tpi.product_id
+			LEFT JOIN TBL_RACK_PRODUCT trp ON trp.product_id = tpi.product_id
+			LEFT JOIN TBL_RACK tr ON tr.rack_id = trp.rack_id
+			LEFT JOIN TBL_ACCOUNT ta ON ta.account_id = tpl.account_id
+		WHERE 1 = 1
+		    AND tpi.check_yn IS NOT NULL
+			<if test="product_name != null and product_name !=''">
+				AND product_name LIKE CONCAT('%',#{product_name},'%')
+			</if>
+			<if test="seller_name != null and seller_name != ''">
+				AND (ta.account_name) LIKE CONCAT('%',#{seller_name},'%')
+			</if>
+			<if test="purchaser_name != null and purchaser_name != ''">
+				AND purchaser_name LIKE CONCAT('%',#{purchaser_name},'%')
+			</if>
+			<if test="product_id != null and product_id != ''">
+				AND tpl.product_id LIKE CONCAT('%',#{product_id},'%')
+			</if>
+			<if test="tracking_number != null and tracking_number != ''">
+				AND tracking_number LIKE CONCAT('%',#{tracking_number},'%')
+			</if>
+			<if test="check_yn != null and check_yn != ''">
+			    AND check_yn = #{check_yn}
+			</if>
+			<if test="sell_type != null and sell_type != ''">
+			    AND tpl.sell_type = #{sell_type}
+			</if>
+	       	<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+	        	AND (date_format(tpi.reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND
+	        	date_format(tpi.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+	       	</if>
+		ORDER by tpi.reg_dt desc
+		) as t101
+	</select>
+
+    <select id="selectProductInspectionCount" parameterType="InspectionVO" resultType="Integer">
+		SELECT count(tpi.product_id)
+		FROM TBL_PRODUCT_INSPECTION tpi
+			INNER JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tpi.product_id
+			INNER JOIN TBL_REQUEST_RETURN trr ON trr.product_id = tpi.product_id
+			LEFT JOIN TBL_RACK_PRODUCT trp ON trp.product_id = tpi.product_id
+			LEFT JOIN TBL_RACK tr ON tr.rack_id = trp.rack_id
+		WHERE 1=1
+			<if test="account_id != null and account_id != ''">
+				AND tpi.account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+			</if>
+			<if test="check_yn != null and check_yn != ''">
+		     	AND tpi.check_yn = #{check_yn}
+			</if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            AND (date_format(reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND date_format(reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+
+	</select>
+
+	<select id="selectProductInspectionInfo" parameterType="InspectionVO" resultType="InspectionVO">
+		SELECT
+			tpi.product_grade,
+			tpi.inspection_opinion,
+			DATE_FORMAT(tpi.inspection_dt,'%y-%m-%d %H:%i') as inspection_dt,
+			trr.tracking_number,
+			trr.return_reason,
+			tpl.product_id,
+			tpl.product_name,
+			ta.account_name as seller_name
+		FROM TBL_PRODUCT_INSPECTION tpi
+			INNER JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tpi.product_id
+			INNER JOIN TBL_REQUEST_RETURN trr ON trr.product_id = tpi.product_id
+			INNER JOIN TBL_ACCOUNT ta ON ta.account_id  = tpl.account_id
+		WHERE tpi.product_id = #{product_id}
+		LIMIT 1
+	</select>
+
+	<select id="selectProductInspectionId" parameterType="InspectionVO" resultType="InspectionVO">
+		SELECT tpl.inspection_id
+		FROM TBL_PRODUCT_INSPECTION tpl
+		WHERE product_id = #{product_id}
+	</select>
+
+	<select id="selectProductInspectionState" parameterType="InspectionVO" resultType="InspectionVO">
+		SELECT tpis.account_id
+			 ,tpis.product_id
+			 ,tpis.video_state as state
+			 ,tpis.inspection_dt
+		FROM TBL_PRODUCT_INSPECTION tpis
+		WHERE
+			tpis.account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+			<if test='product_id != null and product_id != ""'>
+				AND product_id = #{product_id}
+			</if>
+			<if test='video_state != null and video_state != ""'>
+				AND video_state = #{video_state}
+			</if>
+
+		LIMIT 1
+	</select>
+
+	<select id="selectInspectionFile" parameterType="InspectionVO" resultType="InspectionVO">
+		SELECT *
+		FROM TBL_PRODUCT_INSPECTION_FILE
+		WHERE
+			product_id = #{product_id}
+		ORDER by file_state desc
+	</select>
+
+	<insert id="insertProductInspection" parameterType="InspectionVO">
+		INSERT IGNORE  INTO TBL_PRODUCT_INSPECTION (
+						account_id
+						,product_id
+						<if test='product_grade != null and product_grade != ""'>
+						, product_grade
+						</if>
+						, inspection_opinion
+						, inspection_dt
+		)VALUES(
+					    HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+		        		, #{product_id}
+						<if test='product_grade != null and product_grade != ""'>
+						, #{product_grade}
+						</if>
+						, null
+		        		, NOW()
+		)
+	</insert>
+
+	<update id="updateProductInspection" parameterType="InspectionVO">
+		UPDATE TBL_PRODUCT_INSPECTION
+		SET inspection_dt = NOW()
+
+			<if test='product_grade != null and product_grade != ""'>
+				,product_grade = #{product_grade}
+			</if>
+			<if test='inspection_opinion != null and inspection_opinion != ""'>
+				,inspection_opinion = #{inspection_opinion}
+			</if>
+			<if test='check_yn != null and check_yn != ""'>
+				,check_yn = #{check_yn}
+			</if>
+			<if test='video_state != null and video_state != ""'>
+				,video_state = #{video_state}
+			</if>
+			<if test='picture_state != null and picture_state != ""'>
+				,picture_state = #{picture_state}
+			</if>
+		WHERE product_id = #{product_id}
+	</update>
+
+	<update id="updateProductPriceByGrade" parameterType="InspectionVO">
+		UPDATE TBL_PRODUCT_LIST t1
+		SET
+			<if test='product_grade != null and product_grade != "" and product_grade == "A"'>
+				t1.product_vprice = (t1.product_price * 0.9)
+			</if>
+			<if test='product_grade != null and product_grade != "" and product_grade == "B"'>
+				t1.product_vprice = (t1.product_price * 0.8)
+			</if>
+			<if test='product_grade != null and product_grade != "" and product_grade == "C"'>
+				t1.product_vprice = (t1.product_price * 0.7)
+			</if>
+		WHERE t1.product_id = #{product_id}
+	</update>
+
+	<update id="updateProductBarcode" parameterType="InspectionVO">
+		UPDATE TBL_PRODUCT_LIST t1
+		SET
+			<if test='product_barcode != null and product_barcode != ""'>
+				t1.product_barcode = ${product_barcode}
+			</if>
+		WHERE t1.product_id = #{product_id}
+	</update>
+
+	<insert id="insertInspectionFile" parameterType="InspectionVO">
+		INSERT INTO TBL_PRODUCT_INSPECTION_FILE(
+						product_id
+						, file_id
+		<if test="file_state != null and file_state != ''">
+						, file_state
+		</if>
+		)VALUES(
+		        		#{product_id}
+		        		, #{file_id}
+		<if test="file_state != null and file_state != ''">
+		        		, #{file_state}
+		</if>
+		)
+	</insert>
+
+
+	<insert id="insertProductReleaseFile" parameterType="ReleaseVO">
+		INSERT INTO TBL_PRODUCT_RELEASE_FILE(
+		tracking_no
+		, file_id
+		)VALUES(
+		#{tracking_no}
+		, #{file_id}
+		)
+	</insert>
+
+	<delete id="deleteInspection" parameterType="InspectionVO">
+		DELETE FROM TBL_PRODUCT_INSPECTION
+	 	where product_id = #{product_id}
+	</delete>
+	<delete id="deleteInspectionFile" parameterType="InspectionVO">
+		DELETE FROM TBL_PRODUCT_INSPECTION_FILE
+		WHERE product_id = #{product_id}
+	</delete>
+
+	<delete id="deleteFile" parameterType="fileVO">
+		DELETE FROM TBL_FILE
+		WHERE file_id IN
+		<foreach collection="list" item="item" index="index" separator="," open="(" close=")">
+			#{item.file_id}
+		</foreach>
+	</delete>
+
+	<select id="selectFileList" parameterType="InspectionVO" resultType="fileVO">
+		SELECT
+			file_id, file_name, file_real_name, file_path,
+			file_ext, file_content_type, file_size, reg_dt
+		FROM TBL_FILE
+		WHERE file_id IN (select file_id from TBL_PRODUCT_INSPECTION_FILE tif left join TBL_PRODUCT_INSPECTION tpi ON tpi.product_id = tif.product_id  where tpi.product_id = #{product_id})
+	</select>
+
+	<delete id="deleteHistory" parameterType="fileVO">
+		DELETE FROM TBL_HISTORY_PRODUCT
+		WHERE product_id = #{product_id} AND state = '최종 검수 대기'
+	</delete>
+
+	<insert id="insertRackProduct" parameterType="RackVO">
+		INSERT INTO TBL_RACK_PRODUCT
+		(
+			rack_id
+		  , product_barcode
+		  , product_id
+		  , pack_type
+		  , amount
+		  , reg_dt
+		)VALUES(
+		    #{rack_id}
+		  , #{product_barcode}
+		  , (SELECT product_id from TBL_PRODUCT_LIST where product_barcode=#{product_barcode})
+		  , #{pack_type}
+		  , #{amount}
+	      , now()
+		);
+	</insert>
+
+	<select id="selectRackProduct" parameterType="hashmap" resultType="RackVO">
+		SELECT * FROM (SELECT trp.rack_product_no,
+			   trp.product_id,
+		       trp.rack_id,
+			   DATE_FORMAT(trp.reg_dt,'%y-%m-%d %H:%i') as reg_dt,
+		       trp.pack_type,
+		  	   sum(CASE WHEN trp.pack_type = 'B' THEN trp.amount ELSE tpl.product_count END) AS product_count,
+		       tr.rack_name
+		FROM TBL_RACK_PRODUCT trp
+		INNER JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = trp.product_id
+		LEFT JOIN TBL_RACK tr ON tr.rack_id = trp.rack_id
+		WHERE 1=1
+        <if test="rack_id != null and rack_id !=''">
+			AND trp.rack_id LIKE CONCAT('%',#{rack_id},'%')
+        </if>
+		<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+			AND (date_format(trp.reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND
+			date_format(trp.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+		</if>
+        GROUP BY trp.rack_id
+		) as t101
+        ORDER BY
+		<if test="order_column != null and order_column != ''">
+			${order_column} ${order_type} ,
+		</if>
+		t101.reg_dt DESC
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+	</select>
+
+
+	<select id="selectRackProductTotal" parameterType="hashmap" resultType="Integer">
+		select count(*)
+		FROM (
+			SELECT trp.rack_product_no,
+			   trp.product_id,
+		       trp.rack_id,
+			   DATE_FORMAT(trp.reg_dt,'%y-%m-%d %H:%i') as reg_dt,
+		       trp.pack_type,
+		  	   sum(CASE WHEN trp.pack_type = 'B' THEN trp.amount ELSE tpl.product_count END) AS product_count,
+		       tr.rack_name
+		FROM TBL_RACK_PRODUCT trp
+		INNER JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = trp.product_id
+		LEFT JOIN TBL_RACK tr ON tr.rack_id = trp.rack_id
+		WHERE 1=1
+        <if test="rack_id != null and rack_id !=''">
+			AND trp.rack_id LIKE CONCAT('%',#{rack_id},'%')
+        </if>
+		<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+			AND (date_format(trp.reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND
+			date_format(trp.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+		</if>
+        GROUP BY trp.rack_id
+        ORDER BY reg_dt DESC
+		) as t101
+	</select>
+
+	<select id="selectRackProductDetail" parameterType="hashmap" resultType="RackVO">
+		SELECT * FROM (SELECT trp.product_id,
+		       trp.rack_id,
+		       trp.pack_type,
+		       tpl.product_name,
+		       tpl.sell_type,
+			   trr.tracking_number,
+		       CASE WHEN trp.pack_type = 'B' THEN trp.amount ELSE tpl.product_count END AS product_count,
+			   tr.rack_name,
+			   ta.account_name as seller_name,
+			   trr.purchaser_name
+		FROM TBL_RACK_PRODUCT trp
+			INNER JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = trp.product_id
+			INNER JOIN TBL_REQUEST_RETURN trr ON trr.product_id = tpl.product_id
+			LEFT JOIN TBL_RACK tr ON tr.rack_id = trp.rack_id
+			LEFT JOIN TBL_ACCOUNT ta ON ta.account_id = tpl.account_id
+		WHERE 1=1
+        <if test="rack_id != null and rack_id !=''">
+        	AND trp.rack_id = #{rack_id}
+        </if>
+		) as t101
+		 ORDER BY
+		<if test="order_column != null and order_column != ''">
+			${order_column} ${order_type} ,
+		</if>
+		t101.product_id DESC
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+	</select>
+
+	<select id="selectRackProductDetailTotal" parameterType="hashmap" resultType="Integer">
+		select count(*)
+		FROM (SELECT trp.product_id,
+		       trp.rack_id,
+		       trp.pack_type,
+		       tpl.product_name,
+		       tpl.sell_type,
+			   trr.tracking_number,
+		       CASE WHEN trp.pack_type = 'B' THEN trp.amount ELSE tpl.product_count END AS product_count,
+			   tr.rack_name,
+			   ta.account_name as seller_name,
+			   trr.purchaser_name
+		FROM TBL_RACK_PRODUCT trp
+			INNER JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = trp.product_id
+			INNER JOIN TBL_REQUEST_RETURN trr ON trr.product_id = tpl.product_id
+			LEFT JOIN TBL_RACK tr ON tr.rack_id = trp.rack_id
+			LEFT JOIN TBL_ACCOUNT ta ON ta.account_id = tpl.account_id
+		WHERE 1=1
+        <if test="rack_id != null and rack_id !=''">
+        	AND trp.rack_id = #{rack_id}
+        </if>
+		) as t101
+	</select>
+
+	<select id="selectRackListAll" parameterType="RackVO" resultType="RackVO">
+		SELECT tr.rack_id,
+		       tr.rack_code,
+		       tr.barcode,
+		       tr.site_id,
+		       tr.cell_id,
+		       tr.rack_name
+		FROM TBL_RACK tr
+		WHERE 1=1
+        <if test="rack_id != null and rack_id !=''">
+			AND tr.rack_id LIKE CONCAT('%',#{rack_id},'%')
+        </if>
+	</select>
+
+
+	<select id="selectRackList" parameterType="hashmap" resultType="RackVO">
+		SELECT * FROM (SELECT tr.rack_id,
+		       tr.rack_code,
+		       tr.barcode,
+		       tr.site_id,
+		       tr.cell_id,
+		       tr.rack_name
+		FROM TBL_RACK tr
+		WHERE 1=1
+        <if test="rack_name != null and rack_name !=''">
+			AND tr.rack_name LIKE CONCAT('%',#{rack_name},'%')
+        </if>
+		) as t101
+		ORDER BY
+		<if test="order_column != null and order_column != ''">
+			${order_column} ${order_type} ,
+		</if>
+		t101.rack_id desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+	</select>
+
+	<select id="selectRackListTotal" parameterType="hashmap" resultType="Integer">
+		SELECT COUNT(*)
+		FROM (SELECT tr.rack_id,
+		       tr.rack_code,
+		       tr.barcode,
+		       tr.site_id,
+		       tr.cell_id,
+		       tr.rack_name
+		FROM TBL_RACK tr
+		WHERE 1=1
+        <if test="rack_name != null and rack_name !=''">
+			AND tr.rack_name LIKE CONCAT('%',#{rack_name},'%')
+        </if>
+		) as t101
+	</select>
+
+	<update id="updateRackBarcode" parameterType="RackVO">
+		UPDATE TBL_RACK tr
+		SET
+			<if test='barcode != null and barcode != ""'>
+				tr.barcode = ${barcode}
+			</if>
+		WHERE tr.rack_id = #{rack_id}
+	</update>
+
+	<select id="selectInventoryList" parameterType="hashmap" resultType="InventoryVO">
+-- 		selectInventoryList
+		SELECT * FROM (SELECT
+				DATE_FORMAT(ti.reg_dt, '%Y-%m-%d') AS reg_dt,
+			   (SELECT reg_dt FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F' ORDER BY reg_dt DESC LIMIT 1) as mod_dt,
+			   ti.status,
+			   trp.rack_id,
+			   tr.rack_name,
+			   ti.product_id,
+			   tpl.sell_type,
+			   tpl.product_price,
+			   tpl.product_name,
+			   tpl.seller,
+			   ta.account_name as seller_name,
+			   (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = tpl.product_id and thp.state in ('판매중','품절','판매중지') order by thp.history_id
+				DESC LIMIT 1) as product_status,
+			   CONCAT(tpc2.category_name,<![CDATA['>']]>,tpc.category_name) as category,
+			   tpl.product_count,
+			   CASE WHEN (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F') IS NULL THEN 0
+			   		ELSE (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F')
+			   		END AS total_release_count,
+			   tpl.product_count -
+			   CASE WHEN (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F') IS NULL THEN 0
+			   		ELSE (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F')
+			   		END AS remain_count
+		FROM TBL_INVENTORY ti
+			INNER JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = ti.product_id
+			INNER JOIN TBL_ACCOUNT ta ON ta.account_id  = tpl.account_id
+			LEFT JOIN TBL_RACK_PRODUCT trp ON trp.product_id = ti.product_id
+			LEFT JOIN TBL_RACK tr ON tr.rack_id = trp.rack_id
+			LEFT JOIN TBL_PRODUCT_CATEGORY tpc ON tpc.category_id = tpl.category_id
+			LEFT JOIN TBL_PRODUCT_CATEGORY tpc2 ON tpc.parent_category_id = tpc2.category_id
+		WHERE 1=1
+		<if test="rack_id != null and rack_id !=''">
+        	AND ti.rack_id = #{rack_id}
+        </if>
+        <if test="product_id != null and product_id !=''">
+        	AND ti.product_id LIKE CONCAT('%',#{product_id},'%')
+        </if>
+        <if test="product_name != null and product_name !=''">
+        	AND tpl.product_name LIKE CONCAT('%',#{product_name},'%')
+        </if>
+		<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+			AND (date_format(ti.reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND
+			date_format(ti.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+		</if>
+		<if test="sell_type != null and sell_type != ''">
+			AND tpl.sell_type = #{sell_type}
+		</if>
+
+		<if test="product_status != null and product_status != ''">
+			AND (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = tpl.product_id and thp.state in ('판매중','품절','판매중지') order by thp.history_id
+				DESC LIMIT 1) = #{status}
+		</if>
+
+		<if test="seller_name != null and seller_name !=''">
+        	AND ta.account_name LIKE CONCAT('%',#{seller_name},'%')
+        </if>
+		<if test="remain_count != null and remain_count !='' and remain_count == '있음'">
+        	AND (tpl.product_count -
+			   CASE WHEN (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F') IS NULL THEN 0
+					ELSE (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F')
+					END) <![CDATA[>]]> 0
+        </if>
+		<if test="remain_count != null and remain_count !='' and remain_count == '없음'">
+            	AND (tpl.product_count -
+			   CASE WHEN (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F') IS NULL THEN 0
+					ELSE (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F')
+					END) = 0
+        </if>
+
+		<if test="category_id != null and category_id !=''">
+			and tpc.category_id = #{category_id}
+		</if>
+		<if test="parent_category_id != null and parent_category_id !=''">
+			and tpc2.category_id = #{parent_category_id}
+		</if>
+		) as t101
+        ORDER BY
+		<if test="order_column != null and order_column != ''">
+			${order_column} ${order_type} ,
+		</if>
+		t101.reg_dt desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+	</select>
+
+    <select id="selectInventoryListCount" parameterType="hashmap" resultType="Integer">
+      	SELECT count(*)
+		FROM (
+			SELECT
+				DATE_FORMAT(ti.reg_dt, '%Y-%m-%d') AS reg_dt,
+			   (SELECT reg_dt FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F' ORDER BY reg_dt DESC LIMIT 1) as mod_dt,
+			   ti.status,
+			   trp.rack_id,
+			   tr.rack_name,
+			   ti.product_id,
+			   tpl.sell_type,
+			   tpl.product_price,
+			   tpl.product_name,
+			   tpl.seller,
+			   ta.account_name as seller_name,
+			   (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = tpl.product_id and thp.state in ('판매중','품절','판매중지') order by thp.history_id
+				DESC LIMIT 1) as product_status,
+			   CONCAT(tpc2.category_name,<![CDATA['>']]>,tpc.category_name) as category,
+			   tpl.product_count,
+			   CASE WHEN (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F') IS NULL THEN 0
+			   		ELSE (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F')
+			   		END AS total_release_count,
+			   tpl.product_count -
+			   CASE WHEN (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F') IS NULL THEN 0
+			   		ELSE (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F')
+			   		END AS remain_count
+		FROM TBL_INVENTORY ti
+			INNER JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = ti.product_id
+			INNER JOIN TBL_ACCOUNT ta ON ta.account_id  = tpl.account_id
+			LEFT JOIN TBL_RACK_PRODUCT trp ON trp.product_id = ti.product_id
+			LEFT JOIN TBL_RACK tr ON tr.rack_id = trp.rack_id
+			LEFT JOIN TBL_PRODUCT_CATEGORY tpc ON tpc.category_id = tpl.category_id
+			LEFT JOIN TBL_PRODUCT_CATEGORY tpc2 ON tpc.parent_category_id = tpc2.category_id
+		WHERE 1=1
+		<if test="rack_id != null and rack_id !=''">
+        	AND ti.rack_id = #{rack_id}
+        </if>
+        <if test="product_id != null and product_id !=''">
+        	AND ti.product_id LIKE CONCAT('%',#{product_id},'%')
+        </if>
+        <if test="product_name != null and product_name !=''">
+        	AND tpl.product_name LIKE CONCAT('%',#{product_name},'%')
+        </if>
+		<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+			AND (date_format(ti.reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND
+			date_format(ti.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+		</if>
+		<if test="sell_type != null and sell_type != ''">
+			AND tpl.sell_type = #{sell_type}
+		</if>
+		<if test="product_status != null and product_status != ''">
+			AND (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = tpl.product_id and thp.state in ('판매중','품절','판매중지') order by thp.history_id
+				DESC LIMIT 1) = #{status}
+		</if>
+
+		<if test="seller_name != null and seller_name !=''">
+        	AND ta.account_name LIKE CONCAT('%',#{seller_name},'%')
+        </if>
+		<if test="remain_count != null and remain_count !='' and remain_count == '있음'">
+        	AND (tpl.product_count -
+			   CASE WHEN (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F') IS NULL THEN 0
+					ELSE (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F')
+					END) <![CDATA[>]]> 0
+        </if>
+		<if test="remain_count != null and remain_count !='' and remain_count == '없음'">
+            	AND (tpl.product_count -
+			   CASE WHEN (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F') IS NULL THEN 0
+					ELSE (SELECT sum(product_count) FROM TBL_PRODUCT_RELEASE WHERE product_id=ti.product_id AND state='F')
+					END) = 0
+        </if>
+
+		<if test="category_id != null and category_id !=''">
+			and tpc.category_id = #{category_id}
+		</if>
+		<if test="parent_category_id != null and parent_category_id !=''">
+			and tpc2.category_id = #{parent_category_id}
+		</if>
+
+		) as t101
+    </select>
+
+	<insert id="insertInventory" parameterType="InventoryVO">
+		INSERT INTO TBL_INVENTORY (
+			product_id,
+			remain_count,
+			reg_dt
+		)VALUES(
+			#{product_id},
+		    (SELECT product_count from TBL_PRODUCT_LIST where product_id=#{product_id}),
+			now()
+		)
+	</insert>
+
+	<update id="updateInventory" parameterType="InventoryVO">
+		UPDATE TBL_INVENTORY
+		SET mod_dt = NOW()
+        	,status = #{status}
+		WHERE product_id = #{product_id}
+	</update>
+
+
+	<select id="selectProductReleaseList" parameterType="hashmap" resultType="InventoryVO">
+		SELECT * FROM (SELECT DATE_FORMAT(tpr.reg_dt, '%Y-%m-%d %H:%i') AS reg_dt,
+			   tpr.type,
+			   tpr.state,
+			   tpr.product_id,
+			   tpl.category_id,
+			   tpl.product_price,
+			   tpl.product_name,
+			   tpr.product_count,
+			   tpl.seller,
+			   ta.account_name 						AS seller_name,
+			   DATE_FORMAT(tro.order_request_dt, '%Y-%m-%d') AS order_request_dt,
+			   tro.tracking_number,
+			   tro.smartstore_order_no,
+			   tro.smartstore_name,
+			   tdo.order_delivery_state,
+			   tro.order_request_id,
+			   tdo.order_rcv_name,
+			   DATE_FORMAT(tdo.order_delivery_dt, '%Y-%m-%d %H:%i') AS order_delivery_dt,
+			   tprf.file_id
+		FROM TBL_PRODUCT_RELEASE tpr
+			INNER JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tpr.product_id
+			INNER JOIN TBL_ACCOUNT ta ON ta.account_id  = tpl.account_id
+			INNER JOIN TBL_REQUEST_ORDER tro ON tro.product_id = tpr.product_id
+			INNER JOIN TBL_DELIVERY_ORDER tdo ON tdo.order_request_id = tro.order_request_id
+			LEFT JOIN TBL_PRODUCT_RELEASE_FILE tprf ON tprf.tracking_no = tpr.tracking_no
+		WHERE 1=1
+        <if test="product_id != null and product_id !=''">
+        	AND tpr.product_id LIKE CONCAT('%',#{product_id},'%')
+        </if>
+        <if test="product_name != null and product_name !=''">
+        	AND tpl.product_name LIKE CONCAT('%',#{product_name},'%')
+        </if>
+       	<if test="tracking_no != null and tracking_no !=''">
+        	AND tro.tracking_number LIKE CONCAT('%',#{tracking_no},'%')
+        </if>
+		<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+			AND (date_format(tpr.reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND
+			date_format(tpr.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+		</if>
+        <if test="type != null and type !=''">
+        	AND tpr.type = #{type}
+        </if>
+        <if test="state != null and state !=''">
+        	AND tpr.state = #{state}
+        </if>
+		<if test="seller_name != null and seller_name !=''">
+        	AND ta.account_name LIKE CONCAT('%',#{seller_name},'%')
+        </if>
+      	GROUP BY tro.order_request_id
+		) as t101
+        ORDER BY
+		<if test="order_column != null and order_column != ''">
+			${order_column} ${order_type} ,
+		</if>
+		 t101.reg_dt desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+	</select>
+
+    <select id="selectProductReleaseListCount" parameterType="hashmap" resultType="Integer">
+     SELECT count(*)  FROM (
+		SELECT tpr.product_id
+				FROM TBL_PRODUCT_RELEASE tpr
+					INNER JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tpr.product_id
+					INNER JOIN TBL_ACCOUNT ta ON ta.account_id  = tpl.account_id
+					INNER JOIN TBL_REQUEST_ORDER tro ON tro.product_id = tpr.product_id
+					INNER JOIN TBL_DELIVERY_ORDER tdo ON tdo.order_request_id = tro.order_request_id
+					LEFT JOIN TBL_PRODUCT_RELEASE_FILE tprf ON tprf.tracking_no = tpr.tracking_no
+				WHERE 1=1
+		        <if test="product_id != null and product_id !=''">
+		        	AND tpr.product_id LIKE CONCAT('%',#{product_id},'%')
+		        </if>
+				<if test="product_name != null and product_name !=''">
+					AND tpl.product_name LIKE CONCAT('%',#{product_name},'%')
+				</if>
+		       	<if test="tracking_no != null and tracking_no !=''">
+		        	AND tro.tracking_number LIKE CONCAT('%',#{tracking_no},'%')
+		        </if>
+				<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+					AND (date_format(tpr.reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND
+					date_format(tpr.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+				</if>
+				<if test="type != null and type !=''">
+					AND tpr.type = #{type}
+				</if>
+				<if test="state != null and state !=''">
+					AND tpr.state = #{state}
+				</if>
+				<if test="seller_name != null and seller_name !=''">
+					AND ta.account_name LIKE CONCAT('%',#{seller_name},'%')
+				</if>
+		       	GROUP BY tpr.product_id
+       	) A
+    </select>
+
+	<insert id="insertProductRelease" parameterType="InventoryVO">
+		INSERT INTO TBL_PRODUCT_RELEASE (
+			account_id,
+			product_id,
+			tracking_no,
+			reg_dt
+		)VALUES(
+			HEX(AES_ENCRYPT(#{account_id}, #{aes_key})),
+			#{product_id},
+			#{tracking_no},
+			now()
+		)
+	</insert>
+
+	<update id="updateProductRelease" parameterType="InventoryVO">
+		UPDATE TBL_PRODUCT_RELEASE trr
+			INNER JOIN TBL_REQUEST_ORDER tro ON trr.product_id = tro.product_id
+		SET reg_dt = NOW()
+        <if test="state != null and state !=''">
+        	,trr.state = #{state}
+        </if>
+
+		WHERE 1=1
+
+        <if test="tracking_no != null and tracking_no !=''">
+			AND tro.tracking_number = #{tracking_no}
+        </if>
+        <if test="product_id != null and product_id !=''">
+			AND trr.product_id = #{product_id}
+        </if>
+	</update>
+
+	<!-- 출고검수 및 APP 출고 상태체크  -->
+	<select id="selectProductReleaseState" parameterType="InventoryVO" resultType="InventoryVO">
+		SELECT
+			 tprs.tracking_no
+			 ,tprs.state
+			 ,tprs.check_yn
+			 ,tprs.reg_dt
+			 ,tro.order_request_dt
+			 ,tro.smartstore_order_no
+			 ,tro.smartstore_name
+			 ,tdo.order_rcv_name
+		FROM TBL_PRODUCT_RELEASE_STATE tprs
+			INNER JOIN TBL_REQUEST_ORDER tro ON tro.tracking_number = tprs.tracking_no
+			INNER JOIN TBL_DELIVERY_ORDER tdo ON tdo.order_request_id = tro.order_request_id
+		WHERE tprs.account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+			<if test='tracking_no != null and tracking_no != ""'>
+				AND tprs.tracking_no = #{tracking_no}
+			</if>
+			<if test='state != null and state != ""'>
+				AND tprs.state = #{state}
+			</if>
+			<if test='check_yn != null and check_yn != ""'>
+				AND tprs.check_yn = #{check_yn}
+			</if>
+		ORDER by tprs.reg_dt desc
+			LIMIT 1
+	</select>
+
+	<insert id="insertProductReleaseState" parameterType="InventoryVO">
+		INSERT IGNORE INTO TBL_PRODUCT_RELEASE_STATE
+		(account_id
+		, tracking_no
+		, reg_dt
+		)VALUES(
+			HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+			   , #{tracking_no}
+			   , now()
+			   );
+	</insert>
+
+	<update id="updateProductReleaseState" parameterType="InventoryVO">
+		UPDATE TBL_PRODUCT_RELEASE_STATE tprs
+		SET reg_dt = NOW()
+        <if test="state != null and state !=''">
+        	,tprs.state = #{state}
+        </if>
+        <if test="check_yn != null and check_yn !=''">
+        	,tprs.check_yn = #{check_yn}
+        </if>
+		WHERE  tprs.tracking_no = #{tracking_no}
+	</update>
+
+	<!-- 출고검수 화면 -->
+	<select id="selectProductReleaseInspection" parameterType="InventoryVO" resultType="InventoryVO">
+		SELECT
+			   tpl.product_id,
+			   tpl.category_id,
+			   tpl.product_price,
+			   tpl.product_name,
+			   tpl.product_count,
+			   tprs.tracking_no
+		FROM TBL_PRODUCT_RELEASE_STATE tprs
+			INNER JOIN TBL_PRODUCT_RELEASE tpr ON tpr.tracking_no = tprs.tracking_no
+			INNER JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tpr.product_id
+		WHERE  tprs.tracking_no = #{tracking_no}
+
+        ORDER BY tprs.reg_dt asc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+	</select>
+
+    <select id="selectProductReleaseInspectionCount" parameterType="InventoryVO" resultType="Integer">
+        SELECT
+        	COUNT(*)
+		FROM TBL_PRODUCT_RELEASE_STATE tprs
+			INNER JOIN TBL_PRODUCT_RELEASE tpr ON tpr.tracking_no = tprs.tracking_no
+			INNER JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tpr.product_id
+		WHERE  tprs.tracking_no = #{tracking_no}
+    </select>
+
+	<update id="updateProductCount" parameterType="InventoryVO">
+		UPDATE TBL_INVENTORY
+		SET remain_count = (
+				(SELECT remain_count FROM TBL_INVENTORY WHERE product_id = #{product_id}) -
+				(SELECT product_count FROM TBL_PRODUCT_RELEASE WHERE product_id = #{product_id})
+			)
+		WHERE product_id = #{product_id}
+	</update>
+
+	<update id="updateProductCommission" parameterType="CalculateVO">
+		UPDATE TBL_PRODUCT_COMMISSION (
+		SET return_count = (SELECT product_count from TBL_PRODUCT_LIST where product_id=#{product_id}),
+			store_count  = (SELECT product_count from TBL_PRODUCT_LIST where product_id=#{product_id})
+		)
+		WHERE product_id = #{product_id}
+	</update>
+
+	<update id="updateProductCommissionRelease" parameterType="CalculateVO">
+		UPDATE TBL_PRODUCT_COMMISSION (
+			SET release_count = #{release_count}
+		)
+		WHERE product_id = #{product_id}
+	</update>
+
+	<update id="updateOrderRequestStateProgress" parameterType="InventoryVO">
+		UPDATE TBL_DELIVERY_ORDER
+		SET order_delivery_state = #{order_delivery_state}
+		WHERE 1 = 1
+			AND order_delivery_company = '한진택배'
+			AND order_request_id = #{order_request_id}
+	</update>
+
+	<select id="selectProductReleaseListNoLimit" resultType="InventoryVO">
+		SELECT
+			tpr.state,
+			tpr.product_id,
+			tpl.product_name,
+			tro.tracking_number,
+			tdo.order_delivery_state,
+			tro.order_request_id
+		FROM TBL_PRODUCT_RELEASE tpr
+			INNER JOIN TBL_PRODUCT_LIST tpl ON tpl.product_id = tpr.product_id
+			INNER JOIN TBL_REQUEST_ORDER tro ON tro.product_id = tpr.product_id
+			INNER JOIN TBL_DELIVERY_ORDER tdo ON tdo.order_request_id = tro.order_request_id
+			LEFT JOIN TBL_PRODUCT_RELEASE_FILE tprf ON tprf.tracking_no = tpr.tracking_no
+	</select>
+
+</mapper>

@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="coupon" >
+
+    <select id="selectCouponList" resultType="CouponVO">
+        -- 		selectCouponList
+        SELECT * FROM (
+        SELECT
+            t1.coupon_no
+          , t1.coupon_name
+          , t2.account_name as register
+          , t1.coupon_classification
+          , t1.coupon_type
+          , t1.coupon_state
+          , date_format(t1.start_dt, '%Y-%m-%d') as start_dt
+          , date_format(t1.end_dt, '%Y-%m-%d') as end_dt
+          , date_format(t1.reg_dt, '%Y-%m-%d %H:%i:%S') as reg_dt
+
+        FROM TBL_COUPON_INFO t1
+        left join TBL_ACCOUNT t2 on t1.account_id = t2.account_id
+
+        WHERE 1 = 1
+        <if test="coupon_classification != null and coupon_classification !=''">
+            and coupon_classification like CONCAT('%',#{coupon_classification},'%')
+        </if>
+        <if test="coupon_type != null and coupon_type !=''">
+            and coupon_type like CONCAT('%',#{coupon_type},'%')
+        </if>
+        <if test="coupon_state != null and coupon_state !=''">
+            and coupon_state IN
+            <foreach collection="coupon_state" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="coupon_name != null and coupon_name !=''">
+            and coupon_name like CONCAT('%',#{coupon_name},'%')
+        </if>
+        <if test="register != null and register !=''">
+            and account_name like CONCAT('%',#{register},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(start_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(end_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.coupon_no desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectCouponListTotal" resultType="Integer">
+        -- 		selectCouponListTotal
+        SELECT COUNT(*)
+
+        FROM TBL_COUPON_INFO t1
+        left join TBL_ACCOUNT t2 on t1.account_id = t2.account_id
+
+        WHERE 1 = 1
+        <if test="coupon_classification != null and coupon_classification !=''">
+            and coupon_classification like CONCAT('%',#{coupon_classification},'%')
+        </if>
+        <if test="coupon_type != null and coupon_type !=''">
+            and coupon_type like CONCAT('%',#{coupon_type},'%')
+        </if>
+        <if test="coupon_state != null and coupon_state !=''">
+            and coupon_state IN
+            <foreach collection="coupon_state" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="coupon_name != null and coupon_name !=''">
+            and coupon_name like CONCAT('%',#{coupon_name},'%')
+        </if>
+        <if test="register != null and register !=''">
+            and account_name like CONCAT('%',#{register},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(start_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(end_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+    </select>
+
+    <delete id="deleteCouponInfo" parameterType="CouponVO">
+        -- 		deleteCouponInfo
+        DELETE FROM TBL_COUPON_INFO
+        where 1=1
+        <if test="coupon_no_list != null and coupon_no_list != ''">
+            and coupon_no IN
+            <foreach collection="coupon_no_list" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="coupon_no != null and coupon_no != ''">
+            and coupon_no = #{coupon_no}
+        </if>
+    </delete>
+
+    <delete id="deleteCouponHistory" parameterType="CouponVO">
+        -- 		deleteCouponHistory
+        DELETE FROM TBL_COUPON_INFO
+        where 1=1
+        <if test="coupon_no_list != null">
+            and coupon_no IN
+            <foreach collection="coupon_no_list" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="coupon_no != null and coupon_no != ''">
+            and coupon_no = #{coupon_no}
+        </if>
+    </delete>
+
+    <select id="selectCouponDetail" resultType="CouponVO">
+--         selectCouponDetail
+        select
+            t1.coupon_state
+          , t1.coupon_type
+          , t1.coupon_classification
+          , t1.coupon_name
+          , t1.coupon_category
+          , t1.sale_type
+          , t1.sale_percent
+          , t1.sale_limit
+          , t1.sale_price
+          , t1.minimum_price
+          , t1.issuance_count
+          , t1.overlap_use
+          , t1.issuance_grade
+          , DATE_FORMAT(t1.start_dt,'%Y-%m-%d %H:%i:%s') as start_dt
+          , DATE_FORMAT(t1.end_dt,'%Y-%m-%d %H:%i:%s') as end_dt
+          , ABS(DATEDIFF(t1.start_dt, t1.end_dt)) as diffDate
+          , t1.coupon_memo
+          , t1.reg_dt_type
+          , t1.coupon_no
+          , t1.minimum_type
+          , t1.duplicate_type
+          , t1.coupon_category_id
+          , t2.parent_category_id as coupon_parent_category_id
+        from TBL_COUPON_INFO t1
+        LEFT JOIN TBL_PRODUCT_CATEGORY t2 ON t1.coupon_category_id  = t2.category_id
+
+        WHERE t1.coupon_no = #{coupon_no}
+    </select>
+
+    <update id="updateCouponState" parameterType="CouponVO">
+--         updateCouponState
+        UPDATE TBL_COUPON_INFO
+        SET
+            coupon_state = #{coupon_state}
+        WHERE coupon_no = #{coupon_no}
+    </update>
+
+    <insert id="insertCoupon" parameterType="CouponVO">
+--         insertCoupon
+        INSERT INTO TBL_COUPON_INFO (
+                                            coupon_type
+                                          , coupon_classification
+                                          , coupon_code
+                                          , coupon_name
+                                          , coupon_category
+                                          , sale_type
+                                          , sale_percent
+                                          , sale_limit
+                                          , sale_price
+                                          , minimum_price
+                                          , issuance_count
+                                          , overlap_use
+                                          , reg_dt_type
+                                          , start_dt
+                                          , end_dt
+                                          , coupon_memo
+                                          , account_id
+                                          , coupon_state
+                                          , issuance_grade
+                                          , minimum_type
+                                          , duplicate_type
+                                          , coupon_category_id
+
+        ) values (
+                     #{coupon_type}
+                 , #{coupon_classification}
+                 , #{coupon_code}
+                 , #{coupon_name}
+                 , #{coupon_category}
+                 , #{sale_type}
+                 , #{sale_percent}
+                 , #{sale_limit}
+                 , #{sale_price}
+                 , #{minimum_price}
+                 , #{issuance_count}
+                 , #{overlap_use}
+                 , #{reg_dt_type}
+                 , if((#{day} is null or #{day} = ''), #{start_dt}, now())
+                 , if((#{day} is null or #{day} = ''), #{end_dt}, date_add(now(), interval #{day} day))
+                 , #{coupon_memo}
+                 , HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+                 , '발급대기'
+                 , #{issuance_grade}
+                 , #{minimum_type}
+                 , #{duplicate_type}
+                 , #{coupon_category_id}
+                 )
+    </insert>
+
+
+    <update id="updateCoupon" parameterType="CouponVO">
+        --         updateCoupon
+        UPDATE TBL_COUPON_INFO
+        SET
+            coupon_type =  #{coupon_type}
+          , coupon_classification = #{coupon_classification}
+          , coupon_code = #{coupon_code}
+          , coupon_name = #{coupon_name}
+          , coupon_category = #{coupon_category}
+          , sale_type =  #{sale_type}
+          , sale_percent = #{sale_percent}
+          , sale_limit = #{sale_limit}
+          , sale_price = #{sale_price}
+          , minimum_price = #{minimum_price}
+          , issuance_count = #{issuance_count}
+          , overlap_use = #{overlap_use}
+          , reg_dt_type = #{reg_dt_type}
+          , start_dt = if((#{day} is null or #{day} = ''), #{start_dt}, now())
+          , end_dt = if((#{day} is null or #{day} = ''), #{end_dt}, date_add(now(), interval #{day} day))
+          , coupon_memo = #{coupon_memo}
+          , issuance_grade = #{issuance_grade}
+          , minimum_type = #{minimum_type}
+          , duplicate_type =#{duplicate_type}
+          , coupon_category_id = #{coupon_category_id}
+        WHERE coupon_no = #{coupon_no}
+    </update>
+
+</mapper>

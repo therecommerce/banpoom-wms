@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="report">
+
+    <select id="selectReportList" parameterType="hashmap" resultType="ReportVO">
+        SELECT * FROM (SELECT
+            report_no
+             , review_no
+             , product_id
+             , report_type1
+             , report_type2
+             , report_content
+             , report_title
+             , report_writer
+             , reg_dt
+        FROM TBL_REPORT_LIST
+        WHERE 1 = 1
+        <if test="report_type1 != null and report_type1 !=''">
+            AND report_type1 LIKE CONCAT('%',#{report_type1},'%')
+        </if>
+        <if test="report_type2 != null and report_type2 !=''">
+            AND report_type2 LIKE CONCAT('%',#{report_type2},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            AND (date_format(reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND date_format(reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            reg_dt ${order_type} ,
+        </if>
+        t101.reg_dt desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectReportListCount" parameterType="hashmap" resultType="Integer">
+        SELECT
+            COUNT(*)
+        FROM TBL_REPORT_LIST
+    </select>
+
+    <select id="selectReportModalInfo" parameterType="ReportModalVO" resultType="ReportModalVO">
+        SELECT
+            T1.report_type1 ,
+            T1.report_type2 ,
+            T1.report_no ,
+            T1.report_writer ,
+            T1.report_content ,
+            DATE_FORMAT(T1.reg_dt,  '%Y-%m-%d %H:%i:%s') AS reg_dt,
+            AES_DECRYPT(UNHEX(T1.account_id), #{aes_key}) AS account_id,
+            T1.review_no ,
+            T3.review_score ,
+            T3.review_like ,
+            T1.order_request_id ,
+            T3.review_content ,
+            T1.product_id ,
+            T2.product_name ,
+            T3.review_account_id,
+            DATE_FORMAT(T1.reg_dt, '%Y-%m-%d %H:%i:%s') AS reg_dt,
+            DATE_FORMAT(T3.review_reg_dt, '%Y-%m-%d %H:%i:%s') AS review_reg_dt
+        FROM TBL_REPORT_LIST AS T1
+                 LEFT JOIN TBL_PRODUCT_LIST AS T2 ON T2.product_id = T1.product_id
+                 LEFT JOIN TBL_review_info AS T3 ON T3.review_no = T1.review_no
+        WHERE T1.report_no = #{report_no}
+    </select>
+
+    <select id="selectReportImageQuestion" parameterType="ReportModalVO" resultType="Integer">
+        SELECT
+            file_id
+        FROM TBL_QNA_Image
+        WHERE 1 = 1
+          AND review_no = #{review_no}
+          AND question_img = 1
+    </select>
+
+</mapper>

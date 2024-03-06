@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebContextManager">
+    <option name="state">
+      <map>
+        <entry key="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/admin/notice.jsp" value="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/admin" />
+        <entry key="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/consignment/orderDelivery.jsp" value="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/consignment" />
+        <entry key="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/customer/qnaManagement.jsp" value="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/customer" />
+        <entry key="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/customer/reviewManagement.jsp" value="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/customer" />
+        <entry key="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/customerManagement/qnaRegister.jsp" value="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/customerManagement" />
+        <entry key="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/customerManagement/review.jsp" value="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/customerManagement" />
+        <entry key="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/donateDiscardRecoveryManagement/management.jsp" value="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/donateDiscardRecoveryManagement" />
+        <entry key="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/itemSaleManagement/consignmentItemSaleList/commissionDonateBulk.jsp" value="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/itemSaleManagement/consignmentItemSaleList" />
+        <entry key="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/itemSaleManagement/consignmentItemSaleList/commissionRecoveryBulk.jsp" value="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/itemSaleManagement/consignmentItemSaleList" />
+        <entry key="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/operationManagement/managerUpdateAccount.jsp" value="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/operationManagement" />
+        <entry key="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/operationManagement/serviceRuleRegist.jsp" value="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/operationManagement" />
+        <entry key="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/sortException/calculate.jsp" value="file://$PROJECT_DIR$/src/main/webapp/WEB-INF/views/sortException" />
+      </map>
+    </option>
+  </component>
+</project>

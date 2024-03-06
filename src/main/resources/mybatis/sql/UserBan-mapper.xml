@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="userBan">
+
+    <insert id="banHistory" parameterType="UserBanVO">
+        insert into TBL_UserBan
+        set account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key})),
+            ban_by = HEX(AES_ENCRYPT(#{ban_by}, #{aes_key})),
+            ban_reason = #{ban_reason},
+            ban_message = #{ban_message}
+    </insert>
+
+</mapper>

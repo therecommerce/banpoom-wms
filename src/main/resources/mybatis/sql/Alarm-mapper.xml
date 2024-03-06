@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="alarm" >
+
+    <select id="selectAlarm" parameterType="AlarmVO" resultType="AlarmVO">
+        /* selectAlarm */
+        SELECT
+            grade_fix_alarm
+             , calculate_notification_alarm
+             , marketing_info_alarm
+        FROM
+            TBL_ACCOUNT
+        WHERE account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+    </select>
+
+    <update id="updateAlarm" parameterType="AlarmVO">
+        /* updateAlarm */
+        UPDATE TBL_ACCOUNT
+            SET grade_fix_alarm = #{grade_fix_alarm},
+            calculate_notification_alarm = #{calculate_notification_alarm},
+            marketing_info_alarm = #{marketing_info_alarm},
+            order_info_alarm = #{order_info_alarm}
+        WHERE account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+    </update>
+
+    <insert id="insertAlarmHistory" parameterType="AlarmVO">
+        /* insertAlarmHistory */
+        INSERT INTO TBL_HISTORY_ALARM (account_id, reg_dt, alarm_state)
+            VALUE ( (HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))), NOW(), #{alarm_state} )
+    </insert>
+
+    <select id="selectAlarmList" parameterType="NotificationVO" resultType="NotificationVO">
+--         selectAlarmList
+        select
+              HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+            , title
+            , content
+            , noti_no
+            , if(ABS(DATEDIFF(NOW(), reg_dt)) <![CDATA[>]]> 7, DATE_FORMAT(reg_dt, '%Y.%m.%d %H:%i'), if(1 <![CDATA[<=]]> ABS(DATEDIFF(NOW(), reg_dt)) and ABS(DATEDIFF(NOW(), reg_dt)) <![CDATA[<=]]> 7, CONCAT(DATEDIFF(NOW(), reg_dt), '일 전'), if(DATE_FORMAT(TIMEDIFF(NOW(), reg_dt), '%H') <![CDATA[<]]> 1, DATE_FORMAT(TIMEDIFF(NOW(), reg_dt), '%i분 전'), DATE_FORMAT(TIMEDIFF(NOW(), reg_dt), '%l시간 전')))) as diffDate
+        from TBL_NOTIFICATION
+        where 1=1
+        and account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+        and check_flag = '0'
+        order by reg_dt desc
+    </select>
+
+    <update id="changeAlarmFlag" parameterType="NotificationVO">
+--         changeAlarmFlag
+        update TBL_NOTIFICATION
+        set
+            check_flag = '1'
+        where 1=1
+        and account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+    </update>
+
+    <update id="deleteOneAlarm" parameterType="NotificationVO">
+--         deleteOneAlarm
+        update TBL_NOTIFICATION
+        set
+            check_flag = '1'
+        where 1=1
+        and noti_no = #{noti_no}
+    </update>
+
+    <select id="AlarmCount" parameterType="NotificationVO" resultType="int">
+--         AlarmCount
+        select count(*)
+        from TBL_NOTIFICATION
+        where 1=1
+        and account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+        and read_flag = '0'
+        and check_flag = '0'
+    </select>
+
+    <update id="changeReadFlag" parameterType="NotificationVO">
+--         changeReadFlag
+        update TBL_NOTIFICATION
+        set read_flag = '1'
+        where account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+    </update>
+
+</mapper>

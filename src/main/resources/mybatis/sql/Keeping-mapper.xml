@@ -1,0 +1,412 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="keeping" >
+	<select id="selectKeepingProductCount" resultType="ProductCountVO">
+		<!--    selectKeepingProductCount-->
+		SELECT
+		IFNULL(SUM(case when t101.state = '픽업요청' then 1 else 0 end),0) as pickupCount
+		, IFNULL(SUM(case when t101.state = '반품구조대로 이동 중' then 1 else 0 end),0) as moveCount
+		, IFNULL(SUM(case when t101.state = '도착/입고' then 1 else 0 end),0) as arrivalCount
+		, IFNULL(SUM(case when t101.state = '검수중' then 1 else 0 end),0) as inpsectionCount
+		, IFNULL(SUM(case when t101.state = '최종 검수 대기' then 1 else 0 end),0) as readyCount
+		, IFNULL(SUM(case when (t101.state = '보관중' or t101.state = '검수완료') then 1 else 0 end),0) as completeCount
+		FROM (
+		select thp2.product_id, thp2.reg_dt, thp2.state , tpl.account_id
+		FROM TBL_HISTORY_PRODUCT thp2 LEFT JOIN TBL_PRODUCT_LIST tpl ON thp2.product_id = tpl.product_id
+		WHERE (thp2.product_id, thp2.reg_dt)
+		IN(
+		select product_id , max(reg_dt) from TBL_HISTORY_PRODUCT thp
+		group by product_id
+		) and tpl.is_keeping = true
+		) as t101
+		WHERE 1 = 1
+	</select>
+
+	<select id="selectKeepingProductList" resultType="ConsignmentVO" parameterType="HashMap">
+-- 		selectKeepingProductList
+		SELECT * FROM
+		(SELECT
+		t1.product_id as product_id
+		,t1.sell_type as sell_type
+		,CONCAT(tbi.company_name,'(',AES_DECRYPT(UNHEX(ta.account_id),#{aes_key}),')') as seller_name
+		,CONCAT(tpc2.category_name,<![CDATA['>']]>,tpc.category_name) as category_name
+		,t1.product_name as product_name
+		,t1.product_count as product_count
+		, (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id order by thp.history_id DESC LIMIT 1) as product_state
+		,trr.tracking_number as tracking_no
+		,trr.delivery_company as delivery_company
+		,tpi.product_grade as product_grade
+		,DATE_FORMAT(t1.product_selling_dt,'%y-%m-%d') as product_selling_dt
+		,AES_DECRYPT(UNHEX(t2.account_id),#{aes_key}) as inspector_name
+
+		from TBL_PRODUCT_LIST t1
+		LEFT JOIN TBL_PRODUCT_CATEGORY tpc ON tpc.category_id = t1.category_id
+		LEFT JOIN TBL_PRODUCT_CATEGORY tpc2 ON tpc.parent_category_id = tpc2.category_id
+		LEFT JOIN TBL_ACCOUNT ta ON t1.account_id = ta.account_id
+		LEFT JOIN TBL_REQUEST_RETURN trr ON t1.product_id = trr.product_id
+		LEFT JOIN TBL_PRODUCT_INSPECTION tpi ON t1.product_id = tpi.product_id
+		LEFT JOIN TBL_PRODUCT_INSPECTION t2 on t1.product_id = t2.product_id
+		LEFT JOIN TBL_BUSINESS_INFO tbi on ta.account_id = tbi.account_id
+		WHERE t1.is_keeping = true
+		<if test="category_id != null and category_id !=''">
+			and tpc.category_id = #{category_id}
+		</if>
+		<if test="parent_category_id != null and parent_category_id !=''">
+			and tpc2.category_id = #{parent_category_id}
+		</if>
+		) as t101
+		WHERE t101.product_state is not null
+		and t101.product_state not in ('판매중','품절','판매중지','기부','폐기','회수')
+		<if test="product_id != null and product_id !=''">
+			and t101.product_id like CONCAT('%',#{product_id},'%')
+		</if>
+		<if test="product_name != null and product_name !=''">
+			and t101.product_name like CONCAT('%',#{product_name},'%')
+		</if>
+		<if test="seller_name != null and seller_name !=''">
+			and t101.seller_name like CONCAT('%',#{seller_name},'%')
+		</if>
+		<if test="inspector_name != null and inspector_name !=''">
+			and t101.inspector_name like CONCAT('%',#{inspector_name},'%')
+		</if>
+		<if test="tracking_no != null and tracking_no !=''">
+			and t101.tracking_no like CONCAT('%',#{tracking_no},'%')
+		</if>
+		<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+			and (date_format(t101.product_selling_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and
+			date_format(t101.product_selling_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+		</if>
+		<if test="product_state != null and product_state !=''">
+			and t101.product_state IN
+			<foreach collection="product_state" item="item" index="index" separator="," open="(" close=")">
+				#{item}
+			</foreach>
+		</if>
+		ORDER BY
+		<if test="order_column != null and order_column != ''">
+			${order_column} ${order_type} ,
+		</if>
+		t101.product_selling_dt desc
+		LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+	</select>
+
+	<select id="selectKeepingProductListTotal" resultType="Integer" parameterType="HashMap">
+-- 		selectKeepingProductListTotal
+		SELECT count(*) FROM
+		(SELECT
+		t1.product_id as product_id
+		,t1.sell_type as sell_type
+		,CONCAT(tbi.company_name,'(',AES_DECRYPT(UNHEX(ta.account_id),#{aes_key}),')') as seller_name
+		,CONCAT(tpc2.category_name,<![CDATA['>']]>,tpc.category_name) as category_name
+		,t1.product_name as product_name
+		,t1.product_count as product_count
+		, (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id order by thp.history_id DESC LIMIT 1) as product_state
+		,trr.tracking_number as tracking_no
+		,trr.delivery_company as delivery_company
+		,tpi.product_grade as product_grade
+		,DATE_FORMAT(t1.product_selling_dt,'%y-%m-%d') as product_selling_dt
+		,AES_DECRYPT(UNHEX(t2.account_id),#{aes_key}) as inspector_name
+
+		from TBL_PRODUCT_LIST t1
+		LEFT JOIN TBL_PRODUCT_CATEGORY tpc ON tpc.category_id = t1.category_id
+		LEFT JOIN TBL_PRODUCT_CATEGORY tpc2 ON tpc.parent_category_id = tpc2.category_id
+		LEFT JOIN TBL_ACCOUNT ta ON t1.account_id = ta.account_id
+		LEFT JOIN TBL_REQUEST_RETURN trr ON t1.product_id = trr.product_id
+		LEFT JOIN TBL_PRODUCT_INSPECTION tpi ON t1.product_id = tpi.product_id
+		LEFT JOIN TBL_PRODUCT_INSPECTION t2 on t1.product_id = t2.product_id
+		LEFT JOIN TBL_BUSINESS_INFO tbi on ta.account_id = tbi.account_id
+		WHERE t1.is_keeping = true
+		<if test="category_id != null and category_id !=''">
+			and tpc.category_id = #{category_id}
+		</if>
+		<if test="parent_category_id != null and parent_category_id !=''">
+			and tpc2.category_id = #{parent_category_id}
+		</if>
+		) as t101
+		WHERE t101.product_state is not null
+		and t101.product_state not in ('판매중','품절','판매중지','기부','폐기','회수')
+		<if test="product_id != null and product_id !=''">
+			and t101.product_id like CONCAT('%',#{product_id},'%')
+		</if>
+		<if test="product_name != null and product_name !=''">
+			and t101.product_name like CONCAT('%',#{product_name},'%')
+		</if>
+		<if test="seller_name != null and seller_name !=''">
+			and t101.seller_name like CONCAT('%',#{seller_name},'%')
+		</if>
+		<if test="inspector_name != null and inspector_name !=''">
+			and t101.inspector_name like CONCAT('%',#{inspector_name},'%')
+		</if>
+		<if test="tracking_no != null and tracking_no !=''">
+			and t101.tracking_no like CONCAT('%',#{tracking_no},'%')
+		</if>
+		<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+			and (date_format(t101.product_selling_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and
+			date_format(t101.product_selling_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+		</if>
+		<if test="product_state != null and product_state !=''">
+			and t101.product_state IN
+			<foreach collection="product_state" item="item" index="index" separator="," open="(" close=")">
+				#{item}
+			</foreach>
+		</if>
+	</select>
+
+	<select id="selectConsignmentDetail" resultType="ConsignmentVO">
+-- 		selectConsignmentDetail
+		SELECT
+			t1.product_id				as product_id
+			 , ta.account_name 			as seller_name
+			 , tbi.store_name			as store_name
+			 , tbi.company_phone 		as company_phone
+		     , tbi.company_name			as company_name
+			 , t1.product_price			as product_price
+			 , t1.product_vprice		as product_vprice
+			 , t1.product_name			as product_name
+			 , t1.product_count			as product_count
+			 , t1.sell_type				as sell_type
+			 , AES_DECRYPT(UNHEX(t1.account_id),#{aes_key})	as account_id
+			 , date_format(t1.product_selling_dt, '%Y-%m-%d') as product_selling_dt
+			 , ABS(DATEDIFF(NOW(), t1.product_selling_dt))	 as diffDate
+		     <if test="isSelling == true">
+			 ,(select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id and thp.state in ('판매중','품절','판매중지') order by thp.history_id
+				DESC LIMIT 1) 				as product_state
+			 ,true							as isSelling
+			 </if>
+			<if test="isSelling == false">
+			 ,(select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id and thp.state not in ('판매중','품절','판매중지','기부','폐기','회수') order by thp.history_id
+			  DESC LIMIT 1) 			as product_state
+			 ,false						as isSelling
+			</if>
+			<if test="isSelling == null">
+				,(select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id order by thp.history_id
+				DESC LIMIT 1) 			as product_state
+			</if>
+			 , t1.seller_url			as seller_url
+             , CONCAT(t3.category_name,'>',t2.category_name) as category_name
+             , t2.category_id			as category_id
+             , t3.category_id			as parent_category_id
+             , t5.tracking_number     	as tracking_no
+             , t5.purchaser_name		as purchaser_name
+             , t5.return_reason			as return_reason
+             , t5.purchaser_phone		as purchaser_phone
+             , t5.return_request_message
+             , t5.pickup_zipcode
+             , t5.pickup_address1
+             , t5.pickup_address2
+             , t6.delivery_option
+             , if(t6.parent_option_id is null, t6.product_option1, null) as option_name
+             , tpi.product_grade
+             , tpi.inspection_opinion
+             , ta.account_name			as inspector_name
+	  		 , t9.forwarding_destination_zip
+			 , t9.forwarding_destination_addr1
+			 , t9.forwarding_destination_addr2
+			 , t9.delivery_company
+			 , t9.delivery_type
+			 , t9.delivery_charge
+			 , t9.return_location_zip
+			 , t9.return_location_addr1
+			 , t9.return_location_addr2
+			 , t9.return_charge
+		FROM TBL_PRODUCT_LIST t1
+			left join TBL_ACCOUNT ta ON t1.account_id = ta.account_id
+			left join TBL_PRODUCT_CATEGORY t2 on t1.category_id = t2.category_id
+			left join TBL_PRODUCT_CATEGORY t3 on t2.parent_category_id = t3.category_id
+			left join TBL_BUSINESS_INFO tbi ON tbi.account_id = t1.account_id
+			left join TBL_REQUEST_RETURN t5 on t1.product_id = t5.product_id
+			left join TBL_PRODUCT_OPTION t6 on t1.product_id = t6.product_id
+			left join TBL_PRODUCT_INSPECTION tpi ON t1.product_id = tpi.product_id
+			left join TBL_DELIVERY_INFO t9 on t1.product_id = t9.product_id
+		WHERE t1.product_id = #{product_id}
+			LIMIT 1
+	</select>
+
+	<update id="updateProductInfo" parameterType="ConsignmentVO">
+		-- 		updateProductInfo
+		UPDATE TBL_PRODUCT_LIST
+		set
+			product_name   =    #{product_name}
+		    ,product_vprice =    #{product_vprice}
+			,product_count  =    #{product_count}
+		    ,category_id =       #{category_id}
+		WHERE product_id   =    #{product_id}
+	</update>
+
+	<update id="updateProductInspection" parameterType="ConsignmentVO">
+		-- 		updateProductInspection
+		UPDATE TBL_PRODUCT_INSPECTION
+		SET
+			product_grade   =    #{product_grade}
+		  , inspection_opinion =    #{inspection_opinion}
+		WHERE product_id   =    #{product_id}
+	</update>
+
+	<select id="selectKeepingDeliveryCount" resultType="DirectProductManagementVO">
+		-- 		selectKeepingDeliveryCount
+		SELECT
+			sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id desc LIMIT 1) = '배송요청' then 1 else 0 end)  as deliveryRequestCount
+			 , sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id desc LIMIT 1) = '배송준비중' then 1 else 0 end) as deliveryPrepareCount
+			 , sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id desc LIMIT 1) = '배송중' then 1 else 0 end) as onDeliveryCount
+			 , sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id desc LIMIT 1) = '배송완료' then 1 else 0 end) as deliveryCompleteCount
+			 , sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id desc LIMIT 1) = '취소' then 1 else 0 end) as deliveryCancelCount
+
+		FROM TBL_DELIVERY_ORDER t1
+		left join TBL_REQUEST_ORDER t2 on t1.order_request_id = t2.order_request_id
+		left join TBL_PRODUCT_LIST t3 on t2.product_id = t3.product_id
+		WHERE 1 = 1
+		and t3.is_keeping = true
+		and (t3.sell_type = '재고위탁' OR t3.sell_type = '반품위탁' OR t3.sell_type = '위탁판매' OR t3.sell_type = '반품보관')
+	</select>
+
+	<select id="selectKeepingDeliveryProductList" parameterType="hashmap" resultType="DirectProductManagementVO">
+		-- 		selectKeepingDeliveryProductList
+		select *
+		from (
+		SELECT
+		(select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id desc LIMIT 1) as order_delivery_state
+		, t1.delivery_no AS delivery_no1
+		, t1.order_send_name
+		, t1.order_send_phone
+		, t1.order_rcv_name
+		, t1.order_rcv_addr1
+		, t1.order_rcv_addr2
+		, t1.delivery_no
+		, date_format(t1.order_delivery_dt, '%Y-%m-%d') as order_delivery_dt
+		, t3.product_name
+		, t3.product_count
+		, t4.product_option1
+		, '' as start_dt
+		, '' as end_dt
+		, AES_DECRYPT(UNHEX(t3.account_id), #{aes_key}) as account_id
+		, t5.account_name
+		, smartstore_order_no
+		, smartstore_name
+		, t3.product_id
+		, date_format(t2.order_request_dt, '%Y-%m-%d') as order_request_dt
+		, t2.order_product_count
+		, t2.tracking_number
+		, t1.order_delivery_company
+		, t1.tracking_number_registe_flag
+		FROM TBL_DELIVERY_ORDER t1
+		left join TBL_REQUEST_ORDER t2 on t1.order_request_id = t2.order_request_id
+		left join TBL_PRODUCT_LIST t3 on t2.product_id = t3.product_id
+		left join TBL_PRODUCT_OPTION t4 on t3.product_id = t4.product_id
+		left join TBL_ACCOUNT t5 on t3.account_id = t5.account_id
+
+		WHERE 1 = 1
+		AND t3.is_keeping = true
+		AND (t3.sell_type = '재고위탁' OR t3.sell_type = '반품위탁' OR t3.sell_type = '위탁판매' OR t3.sell_type = '반품보관' )
+		<if test="product_name != null and product_name !=''">
+			and product_name like CONCAT('%',#{product_name},'%')
+		</if>
+		<if test="order_send_name != null and order_send_name !=''">
+			and order_send_name like CONCAT('%',#{order_send_name},'%')
+		</if>
+		<if test="delivery_no != null and delivery_no !=''">
+			and delivery_no like CONCAT('%',#{delivery_no},'%')
+		</if>
+		<if test="order_rcv_name != null and order_rcv_name !=''">
+			and order_rcv_name like CONCAT('%',#{order_rcv_name},'%')
+		</if>
+		<if test="account_name != null and account_name !=''">
+			and t5.account_name like CONCAT('%',#{account_name},'%')
+		</if>
+		<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+			and (date_format(order_delivery_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(order_delivery_dt,
+			'%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+		</if>
+		) as t101
+		where 1=1
+		and (t101.order_delivery_state = '배송요청' or t101.order_delivery_state = '배송준비중' or t101.order_delivery_state = '배송중' or t101.order_delivery_state = '배송완료' or t101.order_delivery_state = '취소')
+		<if test="order_delivery_state != null and order_delivery_state !=''">
+			and t101.order_delivery_state IN
+			<foreach collection="order_delivery_state" item="item" index="index" separator="," open="(" close=")">
+				#{item}
+			</foreach>
+		</if>
+		ORDER BY
+		<if test="order_column != null and order_column != ''">
+			${order_column} ${order_type} ,
+		</if>
+		t101.delivery_no desc
+		LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+	</select>
+
+	<select id="selectKeepingDeliveryProductListTotal" parameterType="hashmap" resultType="Integer">
+		-- 		selectKeepingDeliveryProductListTotal
+		select count(*)
+		from (
+		SELECT
+		(select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id desc LIMIT 1) as order_delivery_state
+		, t1.delivery_no AS delivery_no1
+		, t1.order_send_name
+		, t1.order_send_phone
+		, t1.order_rcv_name
+		, t1.order_rcv_addr1
+		, t1.order_rcv_addr2
+		, t1.delivery_no
+		, date_format(t1.order_delivery_dt, '%Y-%m-%d') as order_delivery_dt
+		, t3.product_name
+		, t3.product_count
+		, t4.product_option1
+		, '' as start_dt
+		, '' as end_dt
+		, AES_DECRYPT(UNHEX(t3.account_id), #{aes_key}) as account_id
+		, t5.account_name
+		, smartstore_order_no
+		, smartstore_name
+		, t3.product_id
+		, date_format(t2.order_request_dt, '%Y-%m-%d') as order_request_dt
+		, t2.order_product_count
+		, t2.tracking_number
+		, t1.order_delivery_company
+		FROM TBL_DELIVERY_ORDER t1
+		left join TBL_REQUEST_ORDER t2 on t1.order_request_id = t2.order_request_id
+		left join TBL_PRODUCT_LIST t3 on t2.product_id = t3.product_id
+		left join TBL_PRODUCT_OPTION t4 on t3.product_id = t4.product_id
+		left join TBL_ACCOUNT t5 on t3.account_id = t5.account_id
+
+		WHERE 1 = 1
+		AND t3.is_keeping = true
+		AND (t3.sell_type = '재고위탁' OR t3.sell_type = '반품위탁' OR t3.sell_type = '위탁판매' OR t3.sell_type = '반품보관' )
+		<if test="product_name != null and product_name !=''">
+			and product_name like CONCAT('%',#{product_name},'%')
+		</if>
+		<if test="order_send_name != null and order_send_name !=''">
+			and order_send_name like CONCAT('%',#{order_send_name},'%')
+		</if>
+		<if test="delivery_no != null and delivery_no !=''">
+			and delivery_no like CONCAT('%',#{delivery_no},'%')
+		</if>
+		<if test="order_rcv_name != null and order_rcv_name !=''">
+			and order_rcv_name like CONCAT('%',#{order_rcv_name},'%')
+		</if>
+		<if test="account_name != null and account_name !=''">
+			and t5.account_name like CONCAT('%',#{account_name},'%')
+		</if>
+		<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+			and (date_format(order_delivery_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(order_delivery_dt,
+			'%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+		</if>
+		) as t101
+		where 1=1
+		and (t101.order_delivery_state = '배송요청' or t101.order_delivery_state = '배송준비중' or t101.order_delivery_state = '배송중' or t101.order_delivery_state = '배송완료' or t101.order_delivery_state = '취소')
+		<if test="order_delivery_state != null and order_delivery_state !=''">
+			and t101.order_delivery_state IN
+			<foreach collection="order_delivery_state" item="item" index="index" separator="," open="(" close=")">
+				#{item}
+			</foreach>
+		</if>
+		ORDER BY
+		<if test="order_column != null and order_column != ''">
+			${order_column} ${order_type} ,
+		</if>
+		t101.delivery_no desc
+	</select>
+
+</mapper>

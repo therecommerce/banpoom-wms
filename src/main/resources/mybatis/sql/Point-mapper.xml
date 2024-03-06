@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="point">
+
+    <insert id="insertPointInfo" parameterType="PointVO">
+        -- 포인트 설정 변경
+        INSERT INTO TBL_POINT (
+            grade1 ,
+            grade2 ,
+            grade3 ,
+            grade4 ,
+            grade5 ,
+            review_reward_point ,
+            review_reward_photo_point ,
+            restrict_point_purchase ,
+            restrict_point_use ,
+            restrict_point_percent ,
+            point_lifetime ,
+            is_duplicate
+        ) VALUES (
+            #{grade1} ,
+            #{grade2} ,
+            #{grade3} ,
+            #{grade4} ,
+            #{grade5} ,
+            #{review_reward_point} ,
+            #{review_reward_photo_point} ,
+            #{restrict_point_purchase} ,
+            #{restrict_point_use} ,
+            #{restrict_point_percent} ,
+            #{point_lifetime} ,
+            #{is_duplicate}
+        )
+    </insert>
+
+    <insert id="insertPointHistory" parameterType="PointVO">
+        -- 포인트 설정 변경 기록
+        INSERT INTO TBL_HISTORY_POINT (
+            point_id ,
+            account_id ,
+            admin_account_id ,
+            state ,
+            reg_dt
+        ) VALUES (
+            #{point_id} ,
+            #{account_id} ,
+            #{admin_account_id} ,
+            #{state} ,
+            NOW()
+        )
+    </insert>
+
+    <select id="selectPointInfo" resultType="PointVO">
+        -- 포인트 설정 가져오기
+        SELECT
+            T1.point_id ,
+            T1.grade1 ,
+            T1.grade2 ,
+            T1.grade3 ,
+            T1.grade4 ,
+            T1.grade5 ,
+            T1.review_reward_point ,
+            T1.review_reward_photo_point ,
+            T1.restrict_point_purchase ,
+            T1.restrict_point_use ,
+            T1.restrict_point_percent ,
+            T1.point_lifetime ,
+            T1.is_duplicate ,
+            T2.reg_dt
+        FROM TBL_POINT AS T1
+        LEFT JOIN TBL_HISTORY_POINT AS T2 ON T2.point_id = T1.point_id
+        WHERE T2.state = '포인트 일괄 수정'
+        ORDER BY T2.reg_dt DESC LIMIT 1
+    </select>
+
+</mapper>

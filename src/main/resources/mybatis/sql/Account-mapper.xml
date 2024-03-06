@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="account" >
+
+	<select id="selectUserInfo" parameterType="AdminVO" resultType="AdminVO">
+		-- 		selectUserInfo
+		SELECT
+			AES_DECRYPT(UNHEX(T1.account_id),#{aes_key})       AS account_id
+			 , AES_DECRYPT(UNHEX(T1.account_pwd),#{aes_key})   AS account_pwd
+			 , AES_DECRYPT(UNHEX(T1.account_email),#{aes_key}) AS account_email
+			 , T1.account_name								    AS account_name
+			 , T1.grade_id									    AS grade_id
+			 , T1.account_phone									AS account_phone
+			 , T1.business_info_flag							AS business_info_flag
+			 , T2.company_num									AS company_num
+			 , T2.chief_name									AS chief_name
+			 , T2.store_name									AS store_name
+			 , T2.company_zip									AS company_zip
+			 , T2.company_addr1									AS company_addr1
+			 , T2.company_addr2									AS company_addr2
+			 , T2.online_marketing_num							AS online_marketing_num
+			 , T2.bank_name										AS bank_name
+			 , T2.depositor										AS depositor
+			 , T2.account_num									AS account_num
+		FROM TBL_ACCOUNT T1
+				 left join TBL_BUSINESS_INFO T2 on T1.account_id = T2.account_id
+		WHERE AES_DECRYPT(UNHEX(T1.account_id),#{aes_key}) = #{account_id}
+	</select>
+
+	<select id="checkAccountId" parameterType="AdminVO" resultType="AdminVO">
+		SELECT
+			AES_DECRYPT(UNHEX(T1.account_id),#{aes_key})  AS account_id
+		  , AES_DECRYPT(UNHEX(T1.account_pwd),#{aes_key}) AS account_pwd
+		  , T1.grade_id									  AS grade_id
+		  , T1.account_email							  AS account_email
+		  , T1.account_dormant							  AS account_dormant
+		  , T1.account_name								  AS account_name
+		  , T1.grade_id									  AS grade_id
+		FROM TBL_ACCOUNT T1
+		WHERE AES_DECRYPT(UNHEX(T1.account_id),#{aes_key}) = #{account_id}
+	</select>
+
+	<update id="updateLastLogin" parameterType="AdminVO">
+		UPDATE
+			TBL_ACCOUNT
+		SET last_login = current_time
+		WHERE account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+	</update>
+
+	<update id="updateUserInfo" parameterType="AdminVO">
+		UPDATE TBL_ACCOUNT T1
+		SET
+			account_pwd = HEX(AES_ENCRYPT(#{account_pwd}, #{aes_key}))
+		  ,account_email = HEX(AES_ENCRYPT(#{account_email}, #{aes_key}))
+		  ,account_phone = #{account_phone}
+		  ,account_name = #{account_name}
+		  ,grade_id = #{grade_id}
+		WHERE AES_DECRYPT(UNHEX(T1.account_id),#{aes_key}) = #{account_id}
+	</update>
+
+	<select id="selectAlarm" parameterType="AlarmVO" resultType="AlarmVO">
+		/* selectAlarm */
+		SELECT
+			grade_fix_alarm
+			 , calculate_notification_alarm
+			 , marketing_info_alarm
+		FROM
+			TBL_ACCOUNT
+		WHERE account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+	</select>
+
+	<update id="updateAlarm" parameterType="AlarmVO">
+		/* updateAlarm */
+		UPDATE TBL_ACCOUNT
+		SET grade_fix_alarm = #{grade_fix_alarm},
+			calculate_notification_alarm = #{calculate_notification_alarm},
+			marketing_info_alarm = #{marketing_info_alarm}
+		WHERE account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+	</update>
+
+	<insert id="insertAlarmHistory" parameterType="AlarmVO">
+		/* insertAlarmHistory */
+		INSERT INTO TBL_HISTORY_ALARM (account_id, reg_dt, alarm_state)
+		VALUE ((HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))), NOW(), #{alarm_state})
+	</insert>
+
+	<update id="updateDeleteFlag" parameterType="UserBanVO">
+		update TBL_ACCOUNT
+		set delete_flag = '2',
+		    account_dormant = '2'
+		where account_id = HEX(AES_ENCRYPT(#{account_id}, #{aes_key}))
+	</update>
+
+</mapper>

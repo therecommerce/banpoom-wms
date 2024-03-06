@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="userInquiry">
+
+    <select id="selectUserInquiryList" parameterType="hashmap" resultType="UserInquiryVO">
+        SELECT * FROM (SELECT
+            user_qna_no
+             , user_qna_type2
+             , user_qna_content
+             , user_qna_state
+             , user_qna_title
+             , user_qna_writer
+             , user_qna_reg_dt
+        FROM TBL_USER_QNA_BOARD
+        WhERE 1 = 1
+        <if test="user_qna_type2 != null and user_qna_type2 != ''">
+            AND user_qna_type2 LIKE CONCAT('%',#{user_qna_type2},'%')
+        </if>
+        <if test="user_qna_state != null and user_qna_state != ''">
+            AND user_qna_state LIKE CONCAT('%',#{user_qna_state},'%')
+        </if>
+        <if test="user_qna_title != null and user_qna_title != ''">
+            AND user_qna_title LIKE CONCAT('%',#{user_qna_title},'%')
+        </if>
+        <if test="user_qna_writer != null and user_qna_writer != ''">
+            AND user_qna_writer LIKE CONCAT('%',#{user_qna_writer},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            AND (date_format(user_qna_reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND date_format(user_qna_reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.user_qna_no desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectQnaUserInquiryDetail" parameterType="String" resultType="UserInquiryVO">
+        SELECT
+            T1.user_qna_no
+             , T1.user_qna_type2
+             , T1.user_qna_title
+             , T1.user_qna_reg_dt
+             , T1.user_qna_writer
+             , T1.user_qna_content
+             , T1.user_qna_state
+             , T1.user_qna_answer
+             , T1.user_qna_answerer
+             , T1.user_qna_answer_dt
+             , (SELECT user_qna_no FROM TBL_USER_QNA_BOARD WHERE user_qna_no <![CDATA[<]]> T1.user_qna_no ORDER BY user_qna_no DESC LIMIT 1) AS previous_user_qna_no
+             , (SELECT user_qna_title  FROM TBL_USER_QNA_BOARD WHERE user_qna_no <![CDATA[<]]> T1.user_qna_no ORDER BY user_qna_no DESC LIMIT 1) AS previous_user_qna_title
+             , (SELECT user_qna_no FROM TBL_USER_QNA_BOARD WHERE user_qna_no <![CDATA[>]]> T1.user_qna_no ORDER BY user_qna_no LIMIT 1) AS next_user_qna_no
+             , (SELECT user_qna_title FROM TBL_USER_QNA_BOARD WHERE user_qna_no <![CDATA[>]]> T1.user_qna_no ORDER BY user_qna_no LIMIT 1) AS next_user_qna_title
+        FROM TBL_USER_QNA_BOARD AS T1
+        WHERE T1.user_qna_no = #{user_qna_no}
+    </select>
+
+    <select id="selectQnaUserInquiryCount" parameterType="hashmap" resultType="Integer">
+        SELECT
+            COUNT(*)
+        FROM TBL_USER_QNA_BOARD
+    </select>
+
+    <update id="insertUserInquiryAnswer" parameterType="UserInquiryVO">
+        UPDATE TBL_USER_QNA_BOARD
+        SET user_qna_answer = #{user_qna_answer},
+            user_qna_answer_dt = NOW(),
+            user_qna_answerer = #{user_qna_answerer},
+            user_qna_state = '답변완료',
+            user_answer_account_id = #{user_answer_account_id}
+        WHERE user_qna_no = #{user_qna_no};
+    </update>
+
+    <select id="selectUserInquiryImageQuestion" parameterType="UserInquiryVO" resultType="Integer">
+        SELECT
+            file_id
+        FROM TBL_QNA_Image
+        WHERE 1 = 1
+          AND user_qna_no = #{user_qna_no}
+          AND question_img = 1
+    </select>
+
+    <select id="selectUserInquiryImageAnswer" parameterType="UserInquiryVO" resultType="Integer">
+        SELECT
+            file_id
+        FROM TBL_QNA_Image
+        WHERE 1 = 1
+          AND user_qna_no = #{user_qna_no}
+          AND answer_img = 1
+    </select>
+
+    <insert id="insertUserInquiryAnswerImage" parameterType="UserInquiryVO" useGeneratedKeys="true" keyProperty="user_qna_no">
+        INSERT INTO TBL_QNA_Image
+            (user_qna_no, file_id, answer_img)
+        VALUES(#{user_qna_no}, #{file_id}, 1)
+    </insert>
+
+</mapper>
+
+
+
+
+
+

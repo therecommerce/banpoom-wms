@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Valid 한 설정 xml을 만들기 위해 DTD를 추가해 줍니다. -->
+<!DOCTYPE configuration
+	PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+	<!-- db 접속과 관련된 설정값을 가지고 있는 파일 지정 -->
+	<properties resource="properties/db.properties" />
+
+	<!-- VO 클래스에 대한 alias 설정 -->
+	<typeAliases>
+		<typeAlias alias="AdminVO" type="com.sgsone.returnrescue.vo.AdminVO" />
+		<typeAlias alias="GradeVO" type="com.sgsone.returnrescue.vo.GradeVO" />
+		<typeAlias alias="FileVO" type="com.sgsone.returnrescue.vo.FileVO" />
+		<typeAlias alias="SelectBoxItem" type="com.sgsone.returnrescue.vo.selectbox.SelectBoxItem" />
+		<typeAlias alias="VoomerangBaseVO" type="com.sgsone.returnrescue.vo.VoomerangBaseVO" />
+		<typeAlias alias="WarehouseVO" type="com.sgsone.returnrescue.vo.WarehouseVO" />
+		<typeAlias alias="InspectionVO" type="com.sgsone.returnrescue.vo.InspectionVO" />
+		<typeAlias alias="HistoryVO" type="com.sgsone.returnrescue.vo.HistoryVO" />
+		<typeAlias alias="DirectProductManagementVO" type="com.sgsone.returnrescue.vo.DirectProductManagementVO" />
+		<typeAlias alias="AlarmVO" type="com.sgsone.returnrescue.vo.AlarmVO" />
+		<typeAlias alias="QnaVO" type="com.sgsone.returnrescue.vo.QnaVO" />
+		<typeAlias alias="CategoryVO" type="com.sgsone.returnrescue.vo.CategoryVO" />
+		<typeAlias alias="ProductCountVO" type="com.sgsone.returnrescue.vo.ProductCountVO" />
+		<typeAlias alias="ConsignmentVO" type="com.sgsone.returnrescue.vo.ConsignmentVO" />
+		<typeAlias alias="ReviewVO" type="com.sgsone.returnrescue.vo.ReviewVO" />
+		<typeAlias alias="SellerInquiryVO" type="com.sgsone.returnrescue.vo.SellerInquiryVO" />
+		<typeAlias alias="UserInquiryVO" type="com.sgsone.returnrescue.vo.UserInquiryVO" />
+		<typeAlias alias="NoticeManagementVO" type="com.sgsone.returnrescue.vo.NoticeManagementVO" />
+		<typeAlias alias="ChangePriceVO" type="com.sgsone.returnrescue.vo.ChangePriceVO" />
+		<typeAlias alias="DisabledVO" type="com.sgsone.returnrescue.vo.DisabledVO" />
+		<typeAlias alias="CalculateVO" type="com.sgsone.returnrescue.vo.CalculateVO" />
+		<typeAlias alias="ReportVO" type="com.sgsone.returnrescue.vo.ReportVO" />
+		<typeAlias alias="ReportModalVO" type="com.sgsone.returnrescue.vo.ReportModalVO" />
+		<typeAlias alias="UserManagementVO" type="com.sgsone.returnrescue.vo.UserManagementVO" />
+		<typeAlias alias="StartSellerVO" type="com.sgsone.returnrescue.vo.StartSellerVO" />
+		<typeAlias alias="CountVO" type="com.sgsone.returnrescue.vo.CountVO" />
+		<typeAlias alias="TrackingVO" type="com.sgsone.returnrescue.vo.delivery.TrackingVO" />
+		<typeAlias alias="CouponVO" type="com.sgsone.returnrescue.vo.CouponVO" />
+		<typeAlias alias="PointVO" type="com.sgsone.returnrescue.vo.PointVO" />
+		<typeAlias alias="OrderInfoVO" type="com.sgsone.returnrescue.vo.OrderInfoVO" />
+		<typeAlias alias="OfferManagementVO" type="com.sgsone.returnrescue.vo.OfferManagementVO" />
+		<typeAlias alias="NotificationVO" type="com.sgsone.returnrescue.vo.NotificationVO" />
+		<typeAlias alias="ReleaseStateVO" type="com.sgsone.returnrescue.vo.ReleaseStateVO" />
+		<typeAlias alias="ReleaseVO" type="com.sgsone.returnrescue.vo.ReleaseVO" />
+		<typeAlias alias="ManagerVO" type="com.sgsone.returnrescue.vo.ManagerVO" />
+		<typeAlias alias="RackVO" type="com.sgsone.returnrescue.vo.RackVO" />
+		<typeAlias alias="UserBanVO" type="com.sgsone.returnrescue.vo.UserBanVO" />
+		<typeAlias alias="InventoryVO" type="com.sgsone.returnrescue.vo.InventoryVO" />
+		<typeAlias alias="ServiceRuleVO" type="com.sgsone.returnrescue.vo.ServiceRuleVO" />
+		<typeAlias alias="ProductListVO" type="com.sgsone.returnrescue.vo.ProductListVO" />
+		<typeAlias alias="CalculateChartVO" type="com.sgsone.returnrescue.vo.CalculateChartVO" />
+		<typeAlias alias="OrderDecideVO" type="com.sgsone.returnrescue.vo.OrderDecideVO" />
+
+		<typeAlias alias="ProductQnaVO" type="com.sgsone.returnrescue.vo.naverVO.ProductQnaVO" />
+		<typeAlias alias="Contents" type="com.sgsone.returnrescue.vo.naverVO.Contents" />
+		<typeAlias alias="ProductQnaAnswerRequestVO" type="com.sgsone.returnrescue.vo.naverVO.ProductQnaAnswerRequestVO" />
+		<typeAlias alias="ProductUploadVO" type="com.sgsone.returnrescue.vo.naverVO.ProductUploadVO" />
+	</typeAliases>
+
+	<!-- DB Connection 을 위한 정보, ${} 내의 값들은 위의 properties 에서 선언된 값들 -->
+	<environments default="development">
+		<environment id="development">
+			<transactionManager type="JDBC" />
+			<dataSource type="POOLED">
+				<property name="driver" value="${jdbc.driver}"/>
+				<property name="url" value="${jdbc.url}"/>
+				<property name="username" value="${jdbc.username}"/>
+				<property name="password" value="${jdbc.password}"/>
+				<property name="poolPingQuery" value="select 1"/>
+			</dataSource>
+		</environment>
+	</environments>
+
+	<!-- mapper .xmp 파일 정의 - 실제 SQL Query 가 선언되어 있는 부분 -->
+	<mappers>
+		<mapper resource="mybatis/sql/File-mapper.xml"/>
+		<mapper resource="mybatis/sql/Account-mapper.xml"/>
+		<mapper resource="mybatis/sql/CommonRef-mapper.xml"/>
+		<mapper resource="mybatis/sql/Warehouse-mapper.xml"/>
+		<mapper resource="mybatis/sql/History-mapper.xml"/>
+		<mapper resource="mybatis/sql/DirectProductSaleManagement-mapper.xml"/>
+		<mapper resource="mybatis/sql/Qna-mapper.xml"/>
+		<mapper resource="mybatis/sql/Common-mapper.xml"/>
+		<mapper resource="mybatis/sql/Consignment-mapper.xml"/>
+		<mapper resource="mybatis/sql/Review-mapper.xml"/>
+		<mapper resource="mybatis/sql/Report-mapper.xml"/>
+		<mapper resource="mybatis/sql/SellerInquiry-mapper.xml"/>
+		<mapper resource="mybatis/sql/UserInquiry-mapper.xml"/>
+		<mapper resource="mybatis/sql/NoticeManagement-mapper.xml"/>
+		<mapper resource="mybatis/sql/Disabled-mapper.xml"/>
+		<mapper resource="mybatis/sql/Calculate-mapper.xml"/>
+		<mapper resource="mybatis/sql/Keeping-mapper.xml"/>
+		<mapper resource="mybatis/sql/UserManagement-mapper.xml"/>
+		<mapper resource="mybatis/sql/StartSeller-mapper.xml"/>
+		<mapper resource="mybatis/sql/Coupon-mapper.xml"/>
+		<mapper resource="mybatis/sql/Point-mapper.xml"/>
+		<mapper resource="mybatis/sql/OrderInfo-mapper.xml"/>
+		<mapper resource="mybatis/sql/OfferManagement-mapper.xml"/>
+		<mapper resource="mybatis/sql/Manager-mapper.xml"/>
+		<mapper resource="mybatis/sql/ServiceRule-mapper.xml"/>
+		<mapper resource="mybatis/sql/Alarm-mapper.xml"/>
+		<mapper resource="mybatis/sql/Notification-mapper.xml"/>
+		<mapper resource="mybatis/sql/UserBan-mapper.xml"/>
+	</mappers>
+</configuration>

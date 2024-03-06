@@ -1,0 +1,707 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="directProduct" >
+
+	<select id="selectDirectSaleList" resultType="DirectProductManagementVO">
+-- 		selectDirectSaleList
+		SELECT *
+		FROM ( SELECT
+		t1.product_id
+		, t1.seller
+		, t1.product_grade
+		, t1.product_vprice
+		, t1.product_price
+		, t1.product_name
+		, t1.product_count
+		, t1.product_visit
+		, t1.product_soldout_dt
+		, date_format((select thp.reg_dt from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id AND thp.state = '판매중' order by thp.history_id
+		ASC LIMIT 1), '%Y-%m-%d') as product_selling_dt
+		, ABS(DATEDIFF(NOW(), (select thp.reg_dt from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id AND thp.state = '판매중' order by thp.history_id
+		ASC LIMIT 1))) as diffDate
+		, t1.product_score
+		, t1.category_id
+	    , '' as start_dt
+		, '' as end_dt
+		, (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id order by thp.history_id DESC LIMIT 1) as product_state
+		, if(t2.parent_category_id is null, null, if(t3.parent_category_id is null, null, t2.category_name)) as
+		minName
+		, if(t2.parent_category_id is null, null, if(t3.parent_category_id is null, t2.category_name,
+		t3.category_name)) as mediumName
+		, if(t2.parent_category_id is null, t2.category_name, if(t3.parent_category_id is null, t3.category_name,
+		t4.category_name)) as maxName
+		, if(t2.parent_category_id is null, t2.category_name, if(t3.parent_category_id is null, CONCAT(t3.category_name
+		,<![CDATA['>']]>, t2.category_name), CONCAT(t3.category_name, <![CDATA['>']]>, t2.category_name, <![CDATA['>']]>
+		,t4.category_name))
+		) as category_name
+		, AES_DECRYPT(UNHEX(t1.account_id), #{aes_key}) as account_id
+		, t5.account_name
+
+
+		FROM TBL_PRODUCT_LIST t1
+		left join TBL_PRODUCT_CATEGORY t2 on t1.category_id = t2.category_id
+		left join TBL_PRODUCT_CATEGORY t3 on t2.parent_category_id = t3.category_id
+		left join TBL_PRODUCT_CATEGORY t4 on t3.parent_category_id = t4.category_id
+		left join TBL_ACCOUNT t5 on t1.account_id = t5.account_id
+
+		WHERE 1 = 1
+		and sell_type = '직접판매'
+		AND t1.is_keeping = false
+		AND (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id AND state != '최종 검수 대기' order by thp.history_id
+		DESC LIMIT 1) != '기부'
+		AND (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id AND state != '최종 검수 대기' order by thp.history_id
+		DESC LIMIT 1) != '폐기'
+		AND (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id AND state != '최종 검수 대기' order by thp.history_id
+		DESC LIMIT 1) != '회수'
+		<if test="product_id != null and product_id !=''">
+			and product_id like CONCAT('%',#{product_id},'%')
+		</if>
+		<if test="product_name != null and product_name !=''">
+			and product_name like CONCAT('%',#{product_name},'%')
+		</if>
+		<if test="account_name != null and account_name !=''">
+			and t5.account_name like CONCAT('%',#{account_name},'%')
+		</if>
+		<if test="category_id != null and category_id !=''">
+			and t1.category_id = #{category_id}
+		</if>
+		<if test="parent_category_id != null and parent_category_id !=''">
+			and t3.category_id = #{parent_category_id}
+		</if>
+		<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+			and (date_format(product_selling_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and
+			date_format(product_selling_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+		</if>
+		) as t101
+		WHERE 1=1
+		and t101.product_state in ('판매중', '판매중지', '품절')
+		<if test="product_state != null and product_state !=''">
+			and t101.product_state IN
+			<foreach collection="product_state" item="item" index="index" separator="," open="(" close=")">
+				#{item}
+			</foreach>
+		</if>
+		ORDER BY
+		<if test="order_column != null and order_column != ''">
+			${order_column} ${order_type} ,
+		</if>
+		t101.product_id desc
+		LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+	</select>
+
+	<select id="getDirectProductCount" resultType="DirectProductManagementVO">
+-- 		getDirectProductCount
+		SELECT
+		SUM(case when t101.state = '판매중' then 1 else 0 end) as directSaleCount
+		, SUM(case when t101.state = '판매중지' then 1 else 0 end) as directSaleStopCount
+		, SUM(case when t101.state = '품절' then 1 else 0 end) as directSoldOutCount
+		FROM (
+		select thp2.product_id, thp2.reg_dt, thp2.state , tpl.account_id
+		FROM TBL_HISTORY_PRODUCT thp2 LEFT JOIN TBL_PRODUCT_LIST tpl ON thp2.product_id = tpl.product_id
+		WHERE (thp2.product_id, thp2.reg_dt)
+		IN(
+		select product_id , max(reg_dt) from TBL_HISTORY_PRODUCT thp
+		group by product_id
+		) and tpl.sell_type = '직접판매'
+		  AND tpl.is_keeping = false
+		) as t101
+		WHERE 1 = 1
+
+	</select>
+
+	<select id="getCategoryNameList" resultType="DirectProductManagementVO">
+-- 		getCategoryNameList
+		SELECT
+			category_name
+			 , parent_category_id
+			 , category_id
+
+		FROM TBL_PRODUCT_CATEGORY
+	</select>
+
+	<select id="selectDirectSaleListTotal" resultType="Integer">
+-- 		selectDirectSaleListTotal
+		SELECT COUNT(*)
+		FROM ( SELECT
+		t1.product_id
+		, t1.seller
+		, t1.product_grade
+		, t1.product_vprice
+		, t1.product_price
+		, t1.product_name
+		, t1.product_count
+		, t1.product_visit
+		, t1.product_soldout_dt
+		, date_format(t1.product_selling_dt, '%Y-%m-%d') as product_selling_dt
+		, ABS(DATEDIFF(NOW(), t1.product_selling_dt)) as diffDate
+		, t1.product_score
+		, t1.category_id
+		, '' as start_dt
+		, '' as end_dt
+		, (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id order by thp.history_id DESC LIMIT 1) as product_state
+		, if(t2.parent_category_id is null, null, if(t3.parent_category_id is null, null, t2.category_name)) as
+		minName
+		, if(t2.parent_category_id is null, null, if(t3.parent_category_id is null, t2.category_name,
+		t3.category_name)) as mediumName
+		, if(t2.parent_category_id is null, t2.category_name, if(t3.parent_category_id is null, t3.category_name,
+		t4.category_name)) as maxName
+		, if(t2.parent_category_id is null, t2.category_name, if(t3.parent_category_id is null, CONCAT(t3.category_name
+		,<![CDATA['>']]>, t2.category_name), CONCAT(t3.category_name, <![CDATA['>']]>, t2.category_name, <![CDATA['>']]>
+		,t4.category_name))
+		) as category_name
+		, AES_DECRYPT(UNHEX(t1.account_id), #{aes_key}) as account_id
+		, t5.account_name
+
+
+		FROM TBL_PRODUCT_LIST t1
+		left join TBL_PRODUCT_CATEGORY t2 on t1.category_id = t2.category_id
+		left join TBL_PRODUCT_CATEGORY t3 on t2.parent_category_id = t3.category_id
+		left join TBL_PRODUCT_CATEGORY t4 on t3.parent_category_id = t4.category_id
+		left join TBL_ACCOUNT t5 on t1.account_id = t5.account_id
+
+		WHERE 1 = 1
+		and sell_type = '직접판매'
+		AND t1.is_keeping = false
+		AND (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id AND state != '최종 검수 대기' order by thp.history_id
+		DESC LIMIT 1) != '기부'
+		AND (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id AND state != '최종 검수 대기' order by thp.history_id
+		DESC LIMIT 1) != '폐기'
+		AND (select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id AND state != '최종 검수 대기' order by thp.history_id
+		DESC LIMIT 1) != '회수'
+		<if test="product_id != null and product_id !=''">
+			and product_id like CONCAT('%',#{product_id},'%')
+		</if>
+		<if test="product_name != null and product_name !=''">
+			and product_name like CONCAT('%',#{product_name},'%')
+		</if>
+		<if test="account_name != null and account_name !=''">
+			and t5.account_name like CONCAT('%',#{account_name},'%')
+		</if>
+		<if test="category_id != null and category_id !=''">
+			and t1.category_id = #{category_id}
+		</if>
+		<if test="parent_category_id != null and parent_category_id !=''">
+			and t3.category_id = #{parent_category_id}
+		</if>
+		<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+			and (date_format(product_selling_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and
+			date_format(product_selling_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+		</if>
+		) as t101
+		WHERE 1=1
+		and t101.product_state in ('판매중', '판매중지', '품절')
+		<if test="product_state != null and product_state !=''">
+			and t101.product_state IN
+			<foreach collection="product_state" item="item" index="index" separator="," open="(" close=")">
+				#{item}
+			</foreach>
+		</if>
+	</select>
+
+	<select id="getDirectProductDetail" resultType="DirectProductManagementVO">
+-- 		getDirectProductDetail
+		SELECT
+		t1.product_id
+		, t1.seller
+		, t1.product_vprice
+		, t1.product_price
+		, t1.product_name
+		, t1.product_count
+		, t1.product_visit
+		, t1.product_soldout_dt
+		, date_format((select thp.reg_dt from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id AND thp.state = '판매중' order by thp.history_id
+				ASC LIMIT 1), '%Y-%m-%d') as product_selling_dt
+		, t1.product_score
+		, t1.category_id
+		,(select thp.state from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id AND state != '최종 검수 대기' order by thp.history_id
+		DESC LIMIT 1) as product_state
+		, t1.seller_url
+		, t1.register_type
+		, t1.product_count
+		, t1.tenDollaruseFlag
+		, t1.grade_opinion
+		, ABS(DATEDIFF(NOW(), (select thp.reg_dt from TBL_HISTORY_PRODUCT thp where thp.product_id = t1.product_id AND thp.state = '판매중' order by thp.history_id
+		ASC LIMIT 1))) as diffDate
+		, TIMESTAMPDIFF(HOUR, t1.product_selling_dt, NOW()) as diffHours
+		, date_format(date_add(product_selling_dt, interval +30 day), '%Y-%m-%d') as thirtydays
+		, date_format(date_add(product_selling_dt, interval +60 day), '%Y-%m-%d') as sixtydays
+		, date_format(date_add(product_selling_dt, interval +90 day), '%Y-%m-%d') as ninetydays
+		, if(t2.parent_category_id is null , null, if(t3.parent_category_id  is null , null, t2.category_name)) as minName
+		, if(t2.parent_category_id is null , null ,if(t3.parent_category_id  is null , t2.category_name  , t3.category_name)) as mediumName
+		, if(t2.parent_category_id is null , t2.category_name ,if(t3.parent_category_id  is null , t3.category_name, t4.category_name)) as maxName
+		,(select CONCAT(tpc2.category_name,<![CDATA['>']]>,tpc.category_name)  from TBL_PRODUCT_CATEGORY tpc
+		LEFT JOIN TBL_PRODUCT_CATEGORY tpc2 ON tpc.parent_category_id = tpc2.category_id
+		WHERE tpc.category_id = t1.category_id) as category_name
+		, t1.category_id as category_id
+		, t2.parent_category_id as parent_category_id
+		, t5.tracking_number     as tracking_number
+		, t5.purchaser_name
+		, t5.return_reason
+		, t5.purchaser_phone
+		, t5.return_request_message
+		, t5.return_cancel_reason
+		, t5.pickup_address1
+		, t5.pickup_address2
+		, t6.delivery_option
+		, if(t6.parent_option_id is null, t6.product_option1, null) as option_name
+		, t7.consumer
+		, t8.account_phone
+		, t9.order_request_id
+		, COUNT(t10.product_option2) as option_count
+		, t10.product_option2
+		, t12.return_send_zip
+		, t12.return_send_addr1
+		, t12.return_send_addr2
+		, t13.forwarding_destination_zip
+		, t13.forwarding_destination_addr1
+		, t13.forwarding_destination_addr2
+		, t13.delivery_company
+		, t13.delivery_type
+		, t13.delivery_charge
+		, t13.return_location_zip
+		, t13.return_location_addr1
+		, t13.return_location_addr2
+		, t13.return_charge
+		, tpi.product_grade
+		FROM TBL_PRODUCT_LIST t1
+		left join TBL_PRODUCT_CATEGORY t2 on t1.category_id = t2.category_id
+		left join TBL_PRODUCT_CATEGORY t3 on t2.parent_category_id = t3.category_id
+		left join TBL_PRODUCT_CATEGORY t4 on t3.parent_category_id = t4.category_id
+		left join TBL_REQUEST_RETURN t5 on t1.product_id = t5.product_id
+		left join TBL_PRODUCT_OPTION t6 on t1.product_id = t6.product_id
+		left join TBL_CALCULATE_INFO t7 on t1.product_id = t7.product_id
+		left join TBL_ACCOUNT t8 on t5.account_id = t8.account_id
+		left join TBL_REQUEST_ORDER t9 on t1.product_id = t9.product_id
+		left join TBL_PRODUCT_OPTION t10 on t1.product_id = t10.product_id
+		left join TBL_REQUEST_RETURN t11 on t1.product_id = t11.product_id
+		left join TBL_DELIVERY_RETURN t12 on  t11.return_request_id = t12.return_request_id
+		left join TBL_DELIVERY_INFO t13 on t1.product_id = t13.product_id
+		left join TBL_PRODUCT_INSPECTION tpi ON t1.product_id = tpi.product_id
+		WHERE t1.product_id = #{product_id}
+		LIMIT 1
+	</select>
+
+	<select id="selectHistoryProduct" resultType="HistoryVO">
+		SELECT
+			state       as state
+			 ,DATE_FORMAT(reg_dt,'%y-%m-%d %H:%i') as reg_dt
+		FROM TBL_HISTORY_PRODUCT
+		WHERE product_id = #{product_id}
+		  AND state != '최종 검수 대기'
+		ORDER BY reg_dt
+	</select>
+
+	<update id="updateDirectProductInfo" parameterType="DirectProductManagementVO">
+-- 		updateDirectProductInfo
+		UPDATE TBL_PRODUCT_LIST
+		SET
+			product_name   =    #{product_name}
+		  , seller_url     =    #{seller_url}
+		  , product_price =     #{product_price}
+		  , product_count  =    #{product_count}
+		  , category_id =       #{category_id}
+		WHERE product_id   =    #{product_id}
+	</update>
+
+	<update id="updateDirectProductDeliveryInfo" parameterType="DirectProductManagementVO">
+-- 		updateDirectProductDeliveryInfo
+		UPDATE TBL_DELIVERY_INFO
+		SET
+			forwarding_destination_zip   = #{forwarding_destination_zip}
+		  , forwarding_destination_addr1 = #{forwarding_destination_addr1}
+		  , forwarding_destination_addr2 = #{forwarding_destination_addr2}
+		  , delivery_company             = #{delivery_company}
+		  , delivery_type                = #{delivery_type}
+		  , delivery_charge              = #{delivery_charge}
+		  , return_location_zip          = #{return_location_zip}
+		  , return_location_addr1        = #{return_location_addr1}
+		  , return_location_addr2        = #{return_location_addr2}
+		  , return_charge                = #{return_charge}
+		  , mod_dt                       = now()
+		WHERE product_id = #{product_id}
+	</update>
+
+	<update id="updateProductStatus" parameterType="DirectProductManagementVO">
+-- 		updateProductStatus
+		UPDATE TBL_PRODUCT_LIST
+		SET
+			product_status = #{product_status}
+		WHERE product_id = #{product_id}
+	</update>
+
+	<insert id="insertChangeProductState" parameterType="DirectProductManagementVO">
+-- 		updateProductStatus
+		INSERT INTO TBL_HISTORY_PRODUCT (
+		product_id
+		, state
+
+		) values
+		<foreach collection="product_id_list" item="item" index="index" separator=",">
+			( #{item}
+			, #{product_state} )
+		</foreach>
+
+	</insert>
+
+	<update id="changeDirectProductStatus" parameterType="DirectProductManagementVO">
+-- 		changeDirectProductStatus
+		UPDATE TBL_PRODUCT_LIST
+		SET
+		product_status = #{product_state}
+		WHERE 1 = 1
+		AND product_id IN
+		<foreach collection="product_id_list" item="item" index="index" separator="," open="(" close=")">
+			#{item}
+		</foreach>
+	</update>
+
+	<select id="selectOrderDeliveryProductList" parameterType="hashmap" resultType="DirectProductManagementVO">
+		-- selectOrderDeliveryProductList
+		select *
+		from (
+		SELECT
+		(select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id desc LIMIT 1) as order_delivery_state
+		, t1.delivery_no
+		, t1.order_send_name
+		, t1.order_send_phone
+		, t1.order_rcv_name
+		, t1.order_rcv_addr1
+		, t1.order_rcv_addr2
+		, date_format(t1.order_delivery_dt, '%Y-%m-%d') as order_delivery_dt
+		, t3.product_name
+		, t3.product_count
+		, t4.product_option1
+		, '' as start_dt
+		, '' as end_dt
+		, AES_DECRYPT(UNHEX(t3.account_id), #{aes_key}) as account_id
+		, t5.account_name
+		, t2.order_decide_dt
+		,CONCAT('[',IFNULL(tr.rack_name,'-'),'][',IFNULL(t3.product_id,'-'),'][',IFNULL(t3.product_name,'-'),'][',IFNULL(t2.order_product_count,'-'),']') as wbl_product_name
+		FROM TBL_DELIVERY_ORDER t1
+		left join TBL_REQUEST_ORDER t2 on t1.order_request_id = t2.order_request_id
+		left join TBL_PRODUCT_LIST t3 on t2.product_id = t3.product_id
+		left join TBL_PRODUCT_OPTION t4 on t3.product_id = t4.product_id
+		left join TBL_ACCOUNT t5 on t3.account_id = t5.account_id
+		LEFT JOIN TBL_RACK_PRODUCT trp ON trp.product_id = t3.product_id
+		LEFT JOIN TBL_RACK tr ON tr.rack_id = trp.rack_id
+		WHERE 1 = 1
+		AND t3.sell_type = '직접판매'
+		AND t3.is_keeping = false
+		AND (select thd.delivery_type  from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id
+		desc LIMIT 1)  = '주문'
+		<if test="order_rcv_name != null and order_rcv_name !=''">
+			and order_rcv_name like CONCAT('%',#{order_rcv_name},'%')
+		</if>
+		<if test="order_send_name != null and order_send_name !=''">
+			and order_send_name like CONCAT('%',#{order_send_name},'%')
+		</if>
+		<if test="delivery_no != null and delivery_no !=''">
+			and delivery_no like CONCAT('%',#{delivery_no},'%')
+		</if>
+		<if test="account_name != null and account_name !=''">
+			and t5.account_name like CONCAT('%',#{account_name},'%')
+		</if>
+		<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+			and (date_format(order_delivery_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(order_delivery_dt,
+			'%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+		</if>
+		) as t101
+		where 1=1
+		and t101.order_delivery_state is not null
+		<if test="order_delivery_state != null and order_delivery_state !=''">
+			and t101.order_delivery_state IN
+			<foreach collection="order_delivery_state" item="item" index="index" separator="," open="(" close=")">
+				#{item}
+			</foreach>
+		</if>
+		ORDER BY
+		<if test="order_column != null and order_column != ''">
+			${order_column} ${order_type} ,
+		</if>
+		t101.delivery_no desc
+		LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+	</select>
+
+	<select id="selectOrderDeliveryProductListTotal" parameterType="hashmap" resultType="Integer">
+-- 		selectOrderDeliveryProductListTotal
+		select count(*)
+		from (
+		SELECT
+		(select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id desc LIMIT 1) as order_delivery_state
+		, t1.delivery_no
+		, t1.order_send_name
+		, t1.order_send_phone
+		, t1.order_rcv_name
+		, t1.order_rcv_addr1
+		, t1.order_rcv_addr2
+		, date_format(t1.order_delivery_dt, '%Y-%m-%d') as order_delivery_dt
+		, t3.product_name
+		, t3.product_count
+		, t4.product_option1
+		, '' as start_dt
+		, '' as end_dt
+		, AES_DECRYPT(UNHEX(t3.account_id), #{aes_key}) as account_id
+		, t5.account_name
+		, t2.order_decide_dt
+		,CONCAT('[',IFNULL(tr.rack_name,'-'),'][',IFNULL(t3.product_id,'-'),'][',IFNULL(t3.product_name,'-'),'][',IFNULL(t2.order_product_count,'-'),']') as wbl_product_name
+		FROM TBL_DELIVERY_ORDER t1
+		left join TBL_REQUEST_ORDER t2 on t1.order_request_id = t2.order_request_id
+		left join TBL_PRODUCT_LIST t3 on t2.product_id = t3.product_id
+		left join TBL_PRODUCT_OPTION t4 on t3.product_id = t4.product_id
+		left join TBL_ACCOUNT t5 on t3.account_id = t5.account_id
+		LEFT JOIN TBL_RACK_PRODUCT trp ON trp.product_id = t3.product_id
+		LEFT JOIN TBL_RACK tr ON tr.rack_id = trp.rack_id
+		WHERE 1 = 1
+		AND t3.sell_type = '직접판매'
+		AND t3.is_keeping = false
+		AND (select thd.delivery_type  from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id
+		desc LIMIT 1)  = '주문'
+		<if test="order_rcv_name != null and order_rcv_name !=''">
+			and order_rcv_name like CONCAT('%',#{order_rcv_name},'%')
+		</if>
+		<if test="order_send_name != null and order_send_name !=''">
+			and order_send_name like CONCAT('%',#{order_send_name},'%')
+		</if>
+		<if test="delivery_no != null and delivery_no !=''">
+			and delivery_no like CONCAT('%',#{delivery_no},'%')
+		</if>
+		<if test="account_name != null and account_name !=''">
+			and t5.account_name like CONCAT('%',#{account_name},'%')
+		</if>
+		<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+			and (date_format(order_delivery_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(order_delivery_dt,
+			'%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+		</if>
+		) as t101
+		where 1=1
+		and t101.order_delivery_state is not null
+		<if test="order_delivery_state != null and order_delivery_state !=''">
+			and t101.order_delivery_state IN
+			<foreach collection="order_delivery_state" item="item" index="index" separator="," open="(" close=")">
+				#{item}
+			</foreach>
+		</if>
+		ORDER BY
+		<if test="order_column != null and order_column != ''">
+			${order_column} ${order_type} ,
+		</if>
+		t101.delivery_no desc
+	</select>
+
+	<select id="getDeliveryCount" resultType="DirectProductManagementVO">
+-- 		getDeliveryCount
+		SELECT
+			sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id desc LIMIT 1) = '결제완료' then 1 else 0 end) as paymentCompleteCount
+			,  sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id desc LIMIT 1) = '배송요청' then 1 else 0 end) as deliveryRequestCount
+			 , sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id desc LIMIT 1) = '배송준비중' then 1 else 0 end) as deliveryPrepareCount
+			 , sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id desc LIMIT 1) = '배송중' then 1 else 0 end) as onDeliveryCount
+			 , sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id desc LIMIT 1) = '배송완료' then 1 else 0 end) as deliveryCompleteCount
+			 , sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.delivery_no = t1.delivery_no order by thd.history_id desc LIMIT 1) = '취소' then 1 else 0 end) as deliveryCancelCount
+
+		FROM TBL_DELIVERY_ORDER t1
+		left join TBL_REQUEST_ORDER t2 on t1.order_request_id = t2.order_request_id
+		left join TBL_PRODUCT_LIST t3 on t2.product_id = t3.product_id
+
+		WHERE 1 = 1
+		and t3.sell_type = '직접판매'
+	    AND t3.is_keeping = false
+	</select>
+
+	<select id="getReturnCount" resultType="DirectProductManagementVO">
+-- 		getReturnCount
+		SELECT
+			sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.return_request_id = t2.return_request_id order by thd.history_id desc LIMIT 1) = '반품요청' then 1 else 0 end) as returnRequestCount
+			 , sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.return_request_id = t2.return_request_id order by thd.history_id desc LIMIT 1) = '반품거절' then 1 else 0 end) as holdReturnCount
+			 , sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.return_request_id = t2.return_request_id order by thd.history_id desc LIMIT 1) = '반품 반송중' then 1 else 0 end) as returnDeliveryCount
+			 , sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.return_request_id = t2.return_request_id order by thd.history_id desc LIMIT 1) = '반품 반송 완료' then 1 else 0 end) as returnCompleteCount
+			 , sum(case when (select thd.state from TBL_HISTORY_DELIVERY thd where thd.return_request_id = t2.return_request_id order by thd.history_id desc LIMIT 1) = '반품 환불 완료' then 1 else 0 end) as returnRefundCompletCount
+		FROM TBL_DELIVERY_RETURN t1
+		left join TBL_REQUEST_RETURN t2 on t1.return_request_id = t2.return_request_id
+		left join TBL_PRODUCT_LIST t3 on t2.product_id = t3.product_id
+
+		WHERE 1 = 1
+		and t3.sell_type = '직접판매'
+	    AND t3.is_keeping = false
+	</select>
+
+	<select id="selectReturnDeliveryProductList" parameterType="hashmap" resultType="DirectProductManagementVO">
+-- 		selectReturnDeliveryProductList
+		select *
+		from (
+		SELECT
+		date_format(t1.return_delivery_dt, '%Y-%m-%d') as return_delivery_dt
+		, t1.return_no as delivery_no
+		, t1.return_request_id
+		, t2.return_reason
+		, t5.order_send_name
+		, t5.order_send_phone
+		, (select thd.state from TBL_HISTORY_DELIVERY thd where thd.return_request_id = t2.return_request_id order by thd.history_id desc LIMIT 1) as return_delivery_state
+		, t1.return_way
+		, t1.return_delivery_company
+		, t2.tracking_number
+		, t2.return_decide_dt
+		, t3.product_name
+		, t6.product_option1
+		, t3.product_count
+		, '' as start_dt
+		, '' as end_dt
+		, AES_DECRYPT(UNHEX(t3.account_id), #{aes_key}) as account_id
+		, t7.account_name
+
+		FROM TBL_DELIVERY_RETURN t1
+		left join TBL_REQUEST_RETURN t2 on t1.return_request_id = t2.return_request_id
+		left join TBL_PRODUCT_LIST t3 on t2.product_id = t3.product_id
+		left join TBL_REQUEST_ORDER t4 on t3.product_id = t4.product_id
+		left join TBL_DELIVERY_ORDER t5 on t4.order_request_id = t5.order_request_id
+		left join TBL_PRODUCT_OPTION t6 on t3.product_id = t6.product_id
+		left join TBL_ACCOUNT t7 on t3.account_id = t7.account_id
+
+		WHERE 1 = 1
+		AND t3.sell_type = '직접판매'
+		AND t3.is_keeping = false
+		<if test="product_name != null and product_name !=''">
+			and t3.product_name like CONCAT('%',#{product_name},'%')
+		</if>
+		<if test="order_send_name != null and order_send_name !=''">
+			and order_send_name like CONCAT('%',#{order_send_name},'%')
+		</if>
+		<if test="delivery_no != null and delivery_no !=''">
+			and return_no like CONCAT('%',#{return_no},'%')
+		</if>
+		<if test="account_name != null and account_name !=''">
+			and t7.account_name like CONCAT('%',#{account_name},'%')
+		</if>
+		<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+			and (date_format(return_delivery_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and
+			date_format(return_delivery_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+		</if>
+		) as t101
+		where 1=1
+		and t101.return_delivery_state is not null
+		<if test="return_delivery_state != null and return_delivery_state !=''">
+			and t101.return_delivery_state IN
+			<foreach collection="return_delivery_state" item="item" index="index" separator="," open="(" close=")">
+				#{item}
+			</foreach>
+		</if>
+		ORDER BY
+		<if test="order_column != null and order_column != ''">
+			${order_column} ${order_type} ,
+		</if>
+		t101.delivery_no desc
+		LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+	</select>
+
+	<select id="selectReturnDeliveryProductListTotal" parameterType="hashmap" resultType="Integer">
+-- 		selectReturnDeliveryProductListTotal
+		select count(*)
+		from (
+		SELECT
+		date_format(t1.return_delivery_dt, '%Y-%m-%d') as return_delivery_dt
+		, t1.return_no as delivery_no
+		, t1.return_request_id
+		, t2.return_reason
+		, t5.order_send_name
+		, t5.order_send_phone
+		, (select thd.state from TBL_HISTORY_DELIVERY thd where thd.return_request_id = t2.return_request_id order by thd.history_id desc LIMIT 1) as return_delivery_state
+		, t1.return_way
+		, t1.return_delivery_company
+		, t2.tracking_number
+		, t2.return_decide_dt
+		, t3.product_name
+		, t6.product_option1
+		, t3.product_count
+		, '' as start_dt
+		, '' as end_dt
+		, AES_DECRYPT(UNHEX(t3.account_id), #{aes_key}) as account_id
+		, t7.account_name
+
+		FROM TBL_DELIVERY_RETURN t1
+		left join TBL_REQUEST_RETURN t2 on t1.return_request_id = t2.return_request_id
+		left join TBL_PRODUCT_LIST t3 on t2.product_id = t3.product_id
+		left join TBL_REQUEST_ORDER t4 on t3.product_id = t4.product_id
+		left join TBL_DELIVERY_ORDER t5 on t4.order_request_id = t5.order_request_id
+		left join TBL_PRODUCT_OPTION t6 on t3.product_id = t6.product_id
+		left join TBL_ACCOUNT t7 on t3.account_id = t7.account_id
+
+		WHERE 1 = 1
+		AND t3.sell_type = '직접판매'
+		AND t3.is_keeping = false
+		<if test="product_name != null and product_name !=''">
+			and t3.product_name like CONCAT('%',#{product_name},'%')
+		</if>
+		<if test="order_send_name != null and order_send_name !=''">
+			and order_send_name like CONCAT('%',#{order_send_name},'%')
+		</if>
+		<if test="delivery_no != null and delivery_no !=''">
+			and return_no like CONCAT('%',#{return_no},'%')
+		</if>
+		<if test="account_name != null and account_name !=''">
+			and t7.account_name like CONCAT('%',#{account_name},'%')
+		</if>
+		<if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+			and (date_format(return_delivery_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and
+			date_format(return_delivery_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+		</if>
+		) as t101
+		where 1=1
+		and t101.return_delivery_state is not null
+		<if test="return_delivery_state != null and return_delivery_state !=''">
+			and t101.return_delivery_state IN
+			<foreach collection="return_delivery_state" item="item" index="index" separator="," open="(" close=")">
+				#{item}
+			</foreach>
+		</if>
+		ORDER BY
+		<if test="order_column != null and order_column != ''">
+			${order_column} ${order_type} ,
+		</if>
+		t101.delivery_no desc
+	</select>
+
+	<update id="orderDeliveryStatus" parameterType="DirectProductManagementVO">
+-- 		orderDeliveryStatus
+		UPDATE TBL_DELIVERY_ORDER
+		SET
+		order_delivery_state = #{order_delivery_state}
+		WHERE 1=1
+		AND delivery_no IN
+		<foreach collection="delivery_no_list" item="item" index="index" separator="," open="(" close=")">
+			#{item}
+		</foreach>
+	</update>
+
+	<update id="orderReturnStatus" parameterType="DirectProductManagementVO">
+-- 		orderReturnStatus
+		UPDATE TBL_DELIVERY_RETURN t1
+		LEFT JOIN TBL_REQUEST_RETURN t2 ON t1.return_request_id = t2.return_request_id
+		set
+			t1.return_delivery_state = #{return_delivery_state}
+			<if test="return_cancel_reason != null and return_cancel_reason !=''">
+				,t2.return_cancel_reason = #{return_cancel_reason}
+			</if>
+		WHERE t1.return_no IN
+		<foreach collection="return_no_list" item="item" index="index" separator="," open="(" close=")">
+			#{item}
+		</foreach>
+	</update>
+
+	<insert id="insertHistoryDelivery" parameterType="DirectProductManagementVO">
+		insert into TBL_HISTORY_DELIVERY(
+		                                 state
+		                                 , delivery_type
+		                                 , return_request_id
+		) values (
+		<foreach collection="return_no_list" item="item" index="index" separator=",">
+			#{return_delivery_state}
+			, '반품'
+			, (select return_request_id from TBL_DELIVERY_RETURN where return_no = #{item})
+		</foreach>
+			)
+	</insert>
+
+</mapper>

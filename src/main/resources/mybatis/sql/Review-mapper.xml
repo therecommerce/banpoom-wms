@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="review">
+    <select id="selectReviewList" parameterType="hashmap" resultType="ReviewVO">
+        SELECT * FROM (SELECT
+        T1.product_id,
+        T1.review_type,
+        T1.review_score,
+        T1.review_content,
+        T1.review_reg_dt,
+        T1.review_account_id,
+        T1.review_like,
+        T1.review_best,
+        T1.review_no,
+        T2.sell_type,
+        T1.order_request_id,
+        T2.product_name,
+        T2.is_keeping,
+        T3.report_content
+        FROM TBL_review_info AS T1
+        LEFT JOIN TBL_PRODUCT_LIST AS T2 ON T2.product_id = T1.product_id
+        LEFT JOIN TBL_REPORT_LIST AS T3 ON T3.review_no = T1.review_no
+        WHERE 1 = 1
+        <if test="sell_type != null and sell_type !=''">
+            AND T2.sell_type LIKE CONCAT('%',#{sell_type},'%')
+        </if>
+        <if test="review_type != null and review_type !=''">
+            AND T1.review_type LIKE CONCAT('%',#{review_type},'%')
+        </if>
+        <if test="review_score != null and review_score !=''">
+            AND T1.review_score LIKE CONCAT('%',#{review_score},'%')
+        </if>
+        <if test="product_name != null and product_name !=''">
+            AND T2.product_name LIKE CONCAT('%',#{product_name},'%')
+        </if>
+        <if test="product_id != null and product_id !=''">
+            AND T2.product_id LIKE CONCAT('%',#{product_id},'%')
+        </if>
+        <if test="review_account_id != null and review_account_id !=''">
+            AND T1.review_account_id LIKE CONCAT('%',#{review_account_id},'%')
+        </if>
+        <if test="review_best != null and review_best !=''">
+            AND T1.review_best = 1
+        </if>
+        <if test="report_content != null and report_content !=''">
+            AND T3.report_content IS NOT NULL
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            AND (date_format(T1.review_reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND date_format(T1.review_reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        ORDER BY
+        <if test=" order_column != null and order_column != '' ">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.review_reg_dt desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectReviewListCount" parameterType="hashmap" resultType="Integer">
+        SELECT
+        COUNT(*)
+        FROM TBL_review_info AS T1
+        LEFT JOIN TBL_PRODUCT_LIST AS T2 ON T2.product_id = T1.product_id
+        WHERE 1 = 1
+        <if test="sell_type != null and sell_type !=''">
+            AND T2.sell_type LIKE CONCAT('%',#{sell_type},'%')
+        </if>
+        <if test="review_type != null and review_type !=''">
+            AND T1.review_type LIKE CONCAT('%',#{review_type},'%')
+        </if>
+        <if test="review_score != null and review_score !=''">
+            AND T1.review_score LIKE CONCAT('%',#{review_score},'%')
+        </if>
+        <if test="product_name != null and product_name !=''">
+            AND T2.product_name LIKE CONCAT('%',#{product_name},'%')
+        </if>
+        <if test="product_id != null and product_id !=''">
+            AND T2.product_id LIKE CONCAT('%',#{product_id},'%')
+        </if>
+        <if test="review_account_id != null and review_account_id !=''">
+            AND T1.review_account_id LIKE CONCAT('%',#{review_account_id},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            AND (date_format(T1.review_reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND date_format(T1.review_reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+    </select>
+
+    <select id="selectReviewModal" parameterType="String" resultType="ReviewVO">
+        SELECT
+            T1.review_no,
+            T1.review_answer,
+            T1.product_id,
+            T1.review_score,
+            T1.review_reg_dt,
+            T1.review_content,
+            T1.review_type,
+            T1.account_id,
+            T1.order_request_id,
+            T1.review_account_id,
+            T2.product_name,
+            T1.review_like,
+            T3.report_content,
+            T3.report_type1,
+            T3.report_type2,
+            T1.review_best,
+            DATE_FORMAT(T1.review_best_reg_dt, '%Y.%m.%d') AS review_best_reg_dt
+        FROM TBL_review_info AS T1
+                 LEFT JOIN TBL_PRODUCT_LIST T2 on T1.product_id = T2.product_id
+                 LEFT JOIN TBL_REPORT_LIST T3 on T3.review_no  = T1.review_no
+        WHERE 1 = 1
+          AND T1.review_no = #{review_no}
+        GROUP BY T1.review_no = #{review_no};
+    </select>
+
+    <update id="updateBestReview" parameterType="ReviewVO">
+        UPDATE TBL_review_info
+        SET review_best = 1,
+            review_best_reg_dt = NOW()
+        WHERE 1 = 1
+        AND review_no IN
+        <foreach collection="review_no_list" item="item" index="index" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <delete id="deleteReview" parameterType="int">
+        DELETE FROM TBL_review_info
+        WHERE 1 = 1
+        AND review_no IN
+        <foreach collection="review_no_list" item="item" index="index" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </delete>
+
+    <select id="selectReviewImageQuestion" parameterType="ReviewVO" resultType="Integer">
+        SELECT
+            file_id
+        FROM TBL_QNA_Image
+        WHERE 1 = 1
+          AND review_no = #{review_no}
+          AND question_img = 1
+    </select>
+
+    <insert id="updateReviewAnswer" parameterType="ReviewVO">
+        UPDATE TBL_review_info
+        SET
+            review_answer_writer = #{review_answer_writer},
+            answer_account_id = #{answer_account_id},
+            review_answer = #{review_answer}
+        WHERE review_no = #{review_no};
+    </insert>
+
+    <select id="selectOnlyReportReview">
+        SELECT
+            T1.product_id,
+            T1.review_type,
+            T1.review_score,
+            T1.review_content,
+            T1.review_reg_dt,
+            T1.review_account_id,
+            T1.review_like,
+            T1.review_best,
+            T1.review_no,
+            T3.sell_type,
+            T1.order_request_id,
+            T3.product_name,
+            T3.product_id
+        FROM TBL_review_info AS T1
+                 LEFT JOIN TBL_REPORT_LIST AS T2 ON T2.review_no = T1.review_no
+                 LEFT JOIN TBL_PRODUCT_LIST AS T3 ON T3.product_id = T1.product_id
+        WHERE 1 = 1
+          AND T2.report_no IS NOT NULL
+    </select>
+
+    <select id="selectOnlyBestReview">
+        SELECT
+            T1.product_id,
+            T1.review_type,
+            T1.review_score,
+            T1.review_content,
+            T1.review_reg_dt,
+            T1.review_account_id,
+            T1.review_like,
+            T1.review_best,
+            T1.review_no,
+            T3.sell_type,
+            T1.order_request_id,
+            T3.product_name,
+            T3.product_id
+        FROM TBL_review_info AS T1
+                 LEFT JOIN TBL_REPORT_LIST AS T2 ON T2.review_no = T1.review_no
+                 LEFT JOIN TBL_PRODUCT_LIST AS T3 ON T3.product_id = T1.product_id
+        WHERE review_best = 1
+    </select>
+
+</mapper>

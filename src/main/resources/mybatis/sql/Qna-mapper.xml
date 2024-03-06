@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="qna">
+
+    <select id="selectQnaBoardList" parameterType="hashmap" resultType="QnaVO">
+        /* selectQnaBoardList */
+        SELECT * FROM (SELECT
+        T1.product_qna_no
+        , T2.product_name
+        , T2.product_id
+        , T1.product_qna_type1
+        , T1.product_qna_type2
+        , T1.product_qna_title
+        , T1.product_qna_content
+        , T1.product_qna_state
+        , T1.product_qna_name
+        , date_format(T1.product_qna_reg_dt, '%Y-%m-%d %H:%i:%s') as product_qna_reg_dt
+        , T1.order_request_id
+        FROM TBL_PRODUCT_QNA_BOARD AS T1
+        LEFT JOIN TBL_PRODUCT_LIST AS T2 ON T2.product_id = T1.product_id
+        WHERE 1 = 1
+        <if test="product_qna_name != null and product_qna_name !=''">
+            AND T1.product_qna_name LIKE CONCAT('%',#{product_qna_name},'%')
+        </if>
+        <if test="product_name != null and product_name !=''">
+            AND T2.product_name LIKE CONCAT('%',#{product_name},'%')
+        </if>
+        <if test="product_qna_state != null and product_qna_state !=''">
+            AND T1.product_qna_state LIKE CONCAT('%',#{product_qna_state},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            AND (date_format(T1.product_qna_reg_dt, '%Y-%m-%d') <![CDATA[>=]]> #{start_dt} AND date_format(T1.product_qna_reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        ORDER BY
+        <if test=" order_column != null and order_column != '' ">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.product_qna_no DESC
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectNaverQnaBoardList" parameterType="hashmap" resultType="Contents">
+--         selectNaverQnaBoardList
+        select * from (
+            select
+            questionId
+          , date_format(createDate, '%Y-%m-%d') as createDate
+          , question
+          , answer
+          , answered
+          , product_id
+          , product_name
+          , maskedWriterId
+        from TBL_NAVER_PRODUCT_QNA
+                    ) as t101
+        where 1=1
+        <if test="maskedWriterId != null and maskedWriterId !=''">
+            and t101.maskedWriterId like CONCAT('%',#{maskedWriterId},'%')
+        </if>
+        <if test="product_name != null and product_name !=''">
+            and t101.product_name like CONCAT('%',#{product_name},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(t101.createDate, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt}
+            and date_format(t101.createDate, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        <if test="answered != null and answered !=''">
+            and t101.answered IN
+            <foreach collection="answered" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.questionId desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectQnaDetail" parameterType="String" resultType="QnaVO">
+        SELECT
+            T1.product_qna_no
+             , T2.product_name
+             , T2.product_id
+             , T1.product_qna_type1
+             , T1.order_request_id
+             , date_format(T1.product_qna_reg_dt, '%Y-%m-%d') as product_qna_reg_dt
+             , T1.product_qna_name
+             , T1.product_qna_state
+             , T1.product_qna_content
+             , T1.product_qna_title
+             , T1.product_qna_answer
+             , T1.product_qna_answerer
+             , date_format(T1.product_answer_dt, '%Y-%m-%d') as product_answer_dt
+             , T1.product_qna_answerer
+             , (SELECT product_qna_no FROM TBL_PRODUCT_QNA_BOARD WHERE product_qna_no <![CDATA[<]]> T1.product_qna_no ORDER BY product_qna_no DESC LIMIT 1) AS previous_product_qna_no
+             , (SELECT product_qna_title FROM TBL_PRODUCT_QNA_BOARD WHERE product_qna_no <![CDATA[<]]> T1.product_qna_no ORDER BY product_qna_no DESC LIMIT 1) AS previous_product_qna_title
+             , (SELECT product_qna_state FROM TBL_PRODUCT_QNA_BOARD WHERE product_qna_no <![CDATA[<]]> T1.product_qna_no ORDER BY product_qna_no DESC LIMIT 1) AS previous_product_qna_state
+             , (SELECT product_qna_content FROM TBL_PRODUCT_QNA_BOARD WHERE product_qna_no <![CDATA[<]]> T1.product_qna_no ORDER BY product_qna_no DESC LIMIT 1) AS previous_product_qna_content
+             , (SELECT product_qna_no FROM TBL_PRODUCT_QNA_BOARD WHERE product_qna_no <![CDATA[>]]> T1.product_qna_no ORDER BY product_qna_no LIMIT 1) AS next_product_qna_no
+             , (SELECT product_qna_title FROM TBL_PRODUCT_QNA_BOARD WHERE product_qna_no <![CDATA[>]]> T1.product_qna_no ORDER BY product_qna_no LIMIT 1) AS next_product_qna_title
+             , (SELECT product_qna_state FROM TBL_PRODUCT_QNA_BOARD WHERE product_qna_no <![CDATA[>]]> T1.product_qna_no ORDER BY product_qna_no LIMIT 1) AS next_product_qna_state
+             , (SELECT product_qna_content FROM TBL_PRODUCT_QNA_BOARD WHERE product_qna_no <![CDATA[>]]> T1.product_qna_no ORDER BY product_qna_no LIMIT 1) AS next_product_qna_content
+
+        FROM TBL_PRODUCT_QNA_BOARD AS T1
+        LEFT JOIN TBL_PRODUCT_LIST AS T2 ON T2.product_id = T1.product_id
+
+        WHERE T1.product_qna_no = #{product_qna_no}
+    </select>
+
+    <select id="selectNaverQnaDetail" parameterType="String" resultType="Contents">
+--         selectNaverQnaDetail
+        select
+            t1.questionId
+          , date_format(t1.createDate, '%Y-%m-%d') as createDate
+          , t1.question
+          , t1.answer
+          , t1.answered
+          , t1.product_id
+          , t1.product_name
+          , t1.maskedWriterId
+          , (SELECT questionId FROM TBL_NAVER_PRODUCT_QNA WHERE questionId <![CDATA[<]]> t1.questionId ORDER BY questionId DESC LIMIT 1) AS previous_product_qna_no
+          , (SELECT question FROM TBL_NAVER_PRODUCT_QNA WHERE questionId <![CDATA[<]]> t1.questionId ORDER BY questionId DESC LIMIT 1) AS previous_product_qna_title
+          , (SELECT answered FROM TBL_NAVER_PRODUCT_QNA WHERE questionId <![CDATA[<]]> t1.questionId ORDER BY questionId DESC LIMIT 1) AS previous_product_qna_state
+          , (SELECT questionId FROM TBL_NAVER_PRODUCT_QNA WHERE questionId <![CDATA[>]]> t1.questionId ORDER BY questionId LIMIT 1) AS next_product_qna_no
+          , (SELECT question FROM TBL_NAVER_PRODUCT_QNA WHERE questionId <![CDATA[>]]> t1.questionId ORDER BY questionId LIMIT 1) AS next_product_qna_title
+          , (SELECT answered FROM TBL_NAVER_PRODUCT_QNA WHERE questionId <![CDATA[>]]> t1.questionId ORDER BY questionId LIMIT 1) AS next_product_qna_state
+
+        from TBL_NAVER_PRODUCT_QNA t1
+        where 1=1
+        and t1.questionId = #{questionId}
+    </select>
+
+    <select id="selectQnaListCount" parameterType="hashmap" resultType="Integer">
+        SELECT
+            count(*)
+        FROM TBL_PRODUCT_QNA_BOARD
+    </select>
+
+    <select id="selectNaverQnaBoardListTotal" parameterType="hashmap" resultType="Integer">
+        select count(*) from (
+        select
+        questionId
+        , date_format(createDate, '%Y-%m-%d') as createDate
+        , question
+        , answer
+        , answered
+        , product_id
+        , product_name
+        , maskedWriterId
+        from TBL_NAVER_PRODUCT_QNA
+        ) as t101
+        where 1=1
+        <if test="answered != null and answered !=''">
+            and t101.answered like CONCAT('%',#{answered},'%')
+        </if>
+        <if test="product_name != null and product_name !=''">
+            and t101.product_name like CONCAT('%',#{product_name},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(t101.createDate, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt}
+            and date_format(t101.createDate, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        <if test="answered != null and answered !=''">
+            and t101.answered IN
+            <foreach collection="answered" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.questionId desc
+    </select>
+
+    <select id="selectQnaImageQuestion" parameterType="QnaVO" resultType="Integer">
+        SELECT
+            file_id
+        FROM TBL_QNA_Image
+        WHERE 1 = 1
+          AND product_qna_no = #{product_qna_no}
+          AND question_img = 1
+    </select>
+
+    <select id="selectQnaImageAnswer" parameterType="QnaVO" resultType="Integer">
+        SELECT
+            file_id
+        FROM TBL_QNA_Image
+        WHERE 1 = 1
+          AND product_qna_no = #{product_qna_no}
+          AND answer_img = 1
+    </select>
+
+    <update id="insertQnaDetailAnswer" parameterType="QnaVO">
+        /* updateQnaDetailAnswer */
+        UPDATE TBL_PRODUCT_QNA_BOARD
+        SET product_qna_state = '답변완료'
+          , product_qna_answer = #{product_qna_answer}
+          , product_qna_answerer = #{product_qna_answerer}
+          , product_answer_dt = NOW()
+          , answer_account_id = #{answer_account_id}
+        WHERE product_qna_no = #{product_qna_no}
+    </update>
+
+    <insert id="insertQnaAnswerImage" parameterType="QnaVO" useGeneratedKeys="true" keyProperty="product_qna_no">
+        INSERT INTO TBL_QNA_Image
+            (product_qna_no, file_id, answer_img)
+        VALUES(#{product_qna_no}, #{file_id}, 1)
+    </insert>
+
+</mapper>

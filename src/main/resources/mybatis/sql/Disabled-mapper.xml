@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="disabled" >
+
+    <select id="selectDisabledCount" resultType="DisabledVO">
+        -- 		selectDisabledCount
+        select
+            count(t2.donate_no) as donateCount
+          , count(t3.discard_no) as discardCount
+          , count(t4.recovery_no) as recoveryCount
+
+        from TBL_PRODUCT_LIST t1
+        left join TBL_DONATE_INFO t2 on t1.product_id = t2.product_id
+        left join TBL_DISCARD_INFO t3 on t1.product_id = t3.product_id
+        left join TBL_RECOVERY_INFO t4 on t1.product_id = t4.product_id
+
+        where 1 = 1
+        AND (t2.donate_state = 1 or t3.discard_state = 1 or t4.recovery_state = 1)
+        AND t1.sell_type = '위탁판매'
+
+    </select>
+
+    <select id="selectDisabledList" parameterType="DisabledVO" resultType="DisabledVO">
+        -- 		selectDisabledList
+        SELECT * FROM
+        (SELECT
+          t1.product_id
+        , t1.product_name
+        , t1.product_count
+        , t6.sort_type
+        , date_format(t6.reg_dt, '%Y-%m-%d') as reg_dt
+        , if(t2.parent_category_id is null, t2.category_name, if(t3.parent_category_id is null, CONCAT(t3.category_name
+        ,'>', t2.category_name), CONCAT(t3.category_name, '>', t2.category_name, '>'
+        ,t4.category_name))
+        ) as category_name
+        , t6.donate_receipt
+        , AES_DECRYPT(UNHEX(t5.account_id), #{aes_key}) as account_id
+        , t5.account_name
+        , t6.pay_state
+
+        FROM TBL_PRODUCT_LIST t1
+        left join TBL_PRODUCT_CATEGORY t2 on t1.category_id = t2.category_id
+        left join TBL_PRODUCT_CATEGORY t3 on t2.parent_category_id = t3.category_id
+        left join TBL_PRODUCT_CATEGORY t4 on t3.parent_category_id = t4.category_id
+        left join TBL_ACCOUNT t5 on t1.account_id = t5.account_id
+        left join TBL_OFFER_MANAGEMENT t6 on t1.product_id = t6.product_id
+
+        WHERE 1=1
+        AND t6.offer_no is not null
+        <if test="product_id != null and product_id !=''">
+            and t1.product_id like CONCAT('%',#{product_id},'%')
+        </if>
+        <if test="category_id != null and category_id !=''">
+            and t1.category_id = #{category_id}
+        </if>
+        <if test="parent_category_id != null and parent_category_id !=''">
+            and t3.category_id = #{parent_category_id}
+        </if>
+        <if test="product_name != null and product_name !=''">
+            and product_name like CONCAT('%',#{product_name},'%')
+        </if>
+        <if test="state_list != null and state_list !=''">
+            and t6.sory_type like CONCAT('%',#{sory_type},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(t6.reg_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(t6.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.product_id desc
+        LIMIT ${recordCountPerPage} OFFSET ${firstIndex}
+    </select>
+
+    <select id="selectDisabledListTotal" parameterType="DisabledVO" resultType="Integer">
+        -- 		selectDisabledListTotal
+        SELECT count(*) FROM
+        (SELECT
+        t1.product_id
+        , t1.product_name
+        , t1.product_count
+        , t6.sort_type
+        , date_format(t6.reg_dt, '%Y-%m-%d') as reg_dt
+        , if(t2.parent_category_id is null, t2.category_name, if(t3.parent_category_id is null, CONCAT(t3.category_name
+        ,'>', t2.category_name), CONCAT(t3.category_name, '>', t2.category_name, '>'
+        ,t4.category_name))
+        ) as category_name
+        , t6.donate_receipt
+        , AES_DECRYPT(UNHEX(t5.account_id), #{aes_key}) as account_id
+        , t5.account_name
+        , t6.pay_state
+
+        FROM TBL_PRODUCT_LIST t1
+        left join TBL_PRODUCT_CATEGORY t2 on t1.category_id = t2.category_id
+        left join TBL_PRODUCT_CATEGORY t3 on t2.parent_category_id = t3.category_id
+        left join TBL_PRODUCT_CATEGORY t4 on t3.parent_category_id = t4.category_id
+        left join TBL_ACCOUNT t5 on t1.account_id = t5.account_id
+        left join TBL_OFFER_MANAGEMENT t6 on t1.product_id = t6.product_id
+
+        WHERE 1=1
+        AND t6.offer_no is not null
+        <if test="product_id != null and product_id !=''">
+            and t1.product_id like CONCAT('%',#{product_id},'%')
+        </if>
+        <if test="category_id != null and category_id !=''">
+            and t1.category_id = #{category_id}
+        </if>
+        <if test="parent_category_id != null and parent_category_id !=''">
+            and t3.category_id = #{parent_category_id}
+        </if>
+        <if test="product_name != null and product_name !=''">
+            and product_name like CONCAT('%',#{product_name},'%')
+        </if>
+        <if test="state_list != null and state_list !=''">
+            and t6.sory_type like CONCAT('%',#{sory_type},'%')
+        </if>
+        <if test="start_dt != null and start_dt !='' and end_dt != null and end_dt !=''">
+            and (date_format(t6.reg_dt, '%Y-%m-%d') <![CDATA[>=]]>#{start_dt} and date_format(t6.reg_dt, '%Y-%m-%d') <![CDATA[<=]]> #{end_dt})
+        </if>
+        ) as t101
+        ORDER BY
+        <if test="order_column != null and order_column != ''">
+            ${order_column} ${order_type} ,
+        </if>
+        t101.product_id desc
+    </select>
+
+    <select id="selectDisabledDetail" resultType="DisabledVO">
+        SELECT
+            t1.product_name
+          , t1.product_count
+          , t1.product_id
+          , if(t2.parent_category_id is null, t2.category_name, if(t3.parent_category_id is null, CONCAT(t3.category_name
+            ,<![CDATA['>']]>, t2.category_name), CONCAT(t3.category_name, <![CDATA['>']]>, t2.category_name, <![CDATA['>']]>
+            ,t4.category_name))) as category_name
+          , if(t5.donate_no is not null, 'donate', if(t6.discard_no is not null, 'discard', 'recovery')) as disabled_state
+          , t5.donate_receipt_state
+          , t5.donate_receipt_number
+          , t6.discard_dt
+          , t6.discard_receipt_payway
+          , t6.discard_receipt_number
+          , t7.recovery_payway
+          , t7.recovery_dt
+          , t7.recovery_receipt_number
+          , t8.pickup_zipcode
+          , t8.pickup_address1
+          , t8.pickup_address2
+          , t9.return_rcv_zip
+          , t9.return_rcv_addr1
+          , t9.return_rcv_addr2
+          , t9.return_delivery_cost
+
+        from TBL_PRODUCT_LIST t1
+        left join TBL_PRODUCT_CATEGORY t2 on t1.category_id = t2.category_id
+        left join TBL_PRODUCT_CATEGORY t3 on t2.parent_category_id = t3.category_id
+        left join TBL_PRODUCT_CATEGORY t4 on t3.parent_category_id = t4.category_id
+        left join TBL_DONATE_INFO t5 on t1.product_id = t5.product_id
+        left join TBL_DISCARD_INFO t6 on t1.product_id = t6.product_id
+        left join TBL_RECOVERY_INFO t7 on t1.product_Id = t7.product_id
+        left join TBL_REQUEST_RETURN t8 on t1.product_id = t8.product_id
+        left join TBL_DELIVERY_RETURN t9 on t8.return_request_id = t9.return_request_id
+
+        WHERE t1.product_id = #{product_id};
+    </select>
+
+</mapper>
