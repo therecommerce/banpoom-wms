@@ -19,6 +19,8 @@ import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.ssl.SSLContextBuilder;
+import org.apache.poi.ss.formula.functions.T;
+import org.aspectj.bridge.IMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -26,6 +28,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.*;
@@ -355,6 +358,7 @@ public class ConsignmentController {
 	}
 
 
+	@Transactional
 	@RequestMapping(value = "/inspectionComplete.json", method = { RequestMethod.POST })
 	@ResponseBody
 	public ModelAndView inspectionComplete(HttpSession session, HttpServletRequest request, @ModelAttribute("parameterVO") ConsignmentVO parameterVO) {
@@ -371,6 +375,32 @@ public class ConsignmentController {
 			int result = historyService.insertProductHistory(historyVO);
 			if (result > 0) {
 
+				HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
+
+				// 모든 인증서를 신뢰하도록 설정한다
+				SSLContext sslContext = new SSLContextBuilder().loadTrustMaterial(null, (X509Certificate[] chain, String authType) -> true).build();
+				httpClientBuilder.setSSLContext(sslContext);
+
+				// Https 인증 요청시 호스트네임 유효성 검사를 진행하지 않게 한다.
+				SSLConnectionSocketFactory sslSocketFactory = new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE);
+				Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder.<ConnectionSocketFactory>create()
+						.register("http", PlainConnectionSocketFactory.getSocketFactory())
+						.register("https", sslSocketFactory).build();
+
+				PoolingHttpClientConnectionManager connMgr = new PoolingHttpClientConnectionManager(socketFactoryRegistry);
+				httpClientBuilder.setConnectionManager(connMgr);
+
+				// RestTemplate 와 HttpClient 연결
+				HttpClient httpClient = httpClientBuilder.build();
+				HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
+				requestFactory.setHttpClient(httpClient);
+
+
+				RestTemplate restTemplate = new RestTemplate(requestFactory);
+				String url = "https://therecommerce.kr/naver/product/regist/" + parameterVO.getProduct_id();
+				restTemplate.postForEntity(url, null , String.class);
+
+
 				NotificationVO notificationVO = new NotificationVO();
 				notificationVO.setAccount_id(consignmentVO.getAccount_id());
 
@@ -383,6 +413,7 @@ public class ConsignmentController {
 					notificationVO.setContent(NotificationMessage.getMessage(NotificationMessage.Message.INSPECTGRADED, parameterVO.getProduct_id()).getMessageContent());
 					notificationService.insertInspectionNotification(notificationVO);
 				}
+
 
 				modelAndView.addObject("resultCode", "success");
 				modelAndView.addObject("message", "검수확정 성공");

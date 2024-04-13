@@ -9,12 +9,14 @@
         <outputRelativeToContentRoot value="true" />
         <module name="returnrescue" />
         <module name="ReturnRescue-WMS" />
+        <module name="banpoom-wms" />
       </profile>
     </annotationProcessing>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="ReturnRescue-WMS" options="-Xlint:all" />
+      <module name="banpoom-wms" options="-Xlint:all" />
       <module name="returnrescue" options="-Xlint:all" />
       <module name="returnrescue-wms" options="-Xlint:all" />
     </option>
