@@ -23,6 +23,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		<if test="product_barcode != null and product_barcode != ''">
 		AND tpl.product_barcode = #{product_barcode}
 		</if>
+		LIMIT 1
 	</select>
 
 	<select id="selectReleaseProductInfo" resultType="WarehouseVO" parameterType="WarehouseVO">
