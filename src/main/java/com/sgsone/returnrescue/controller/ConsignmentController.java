@@ -1085,10 +1085,9 @@ public class ConsignmentController {
 
 		try {
 			int result = -1;
-//			int result = consignmentService.insertSellingState(parameterVO);
 			for (int i = 0; i < parameterVO.getProduct_id_list().size(); i++) {
 				parameterVO.setProduct_id(parameterVO.getProduct_id_list().get(i));
-				// result = consignmentService.insertSellingState(parameterVO);
+				 result = consignmentService.insertSellingState(parameterVO);
 
 				// schedulerService.stopScheduler(parameterVO.getProduct_id_list().get(i));
 				HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
@@ -1114,6 +1113,7 @@ public class ConsignmentController {
 				RestTemplate restTemplate = new RestTemplate(requestFactory);
 
 				String url = "https://therecommerce.kr/naver/product/regist/" + parameterVO.getProduct_id_list().get(i);
+//				String url = "https://localhost:8981/naver/product/regist/" + parameterVO.getProduct_id_list().get(i);
 				//        RestTemplate restTemplate = new RestTemplate();
 				restTemplate.postForEntity(url, null , String.class);
 

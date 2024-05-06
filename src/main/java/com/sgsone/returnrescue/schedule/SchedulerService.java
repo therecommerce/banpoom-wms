@@ -77,7 +77,7 @@ public class SchedulerService {
     public void thirtyMinutesScheduler() {
         batchUpdateTrackingHistory();
         updateDeliveryState();
-        updateOrderDecide();
+//        updateOrderDecide();  구매확정 로직 수정필요. 1차 오픈 시 미개발 메뉴
     }
 
 //    @Scheduled(cron = "0/10 * * * * *")
@@ -121,7 +121,7 @@ public class SchedulerService {
                                 historyService.insertProductHistory(historyVO);
                                 System.out.println();
                                 System.out.println("==============상품 픽업요청처리 성공==============");
-                            } 
+                            }
                             // else {
                             //     if (trackingDTO.getProgress().get(trackingDTO.getProgress().size() - 1).getInfo().contains("배송완료")) {
                             //         historyVO.setState("도착/입고");
