@@ -720,7 +720,7 @@ aria-hidden="true">
             if (full.delivery_company == undefined && full.delivery_company == null) {
               full.delivery_company = '-';
             }
-            return  (full.delivery_company == 'HJ' ? '한진택배' : full.delivery_company) + ' / ' + full.tracking_no + " " + `<a class="btn bg-blue-white bg-lighten-3" data-toggle="modal" data-target="#modal-5" onclick="setTrackingInfo('한진택배','` +full.tracking_no+`')"><i class="feather icon-search"></i></a>`;
+            return  (full.delivery_company == 'HJ' ? '한진택배' : full.delivery_company) + ' / ' + full.tracking_no + " " + `<a class="btn bg-blue-white bg-lighten-3" data-toggle="modal" data-target="#modal-5" onclick="setTrackingInfo('` + full.delivery_company + `', '` + full.tracking_no + `')"><i class="feather icon-search"></i></a>`;
           }
         } else if (meta.col == 9) {
           if (full.inspector_name == '' || full.inspector_name == null) {
