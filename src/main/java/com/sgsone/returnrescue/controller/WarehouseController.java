@@ -721,11 +721,11 @@ public class WarehouseController {
 				return restResp;
 			}
 			
-			List<RackVO> rackList = warehouseService.selectRackListAll(parameterVO);
-			if(rackList != null && rackList.size() > 0) {
+			RackVO rackInfo = warehouseService.selectRackInfo(parameterVO);
+			if(rackInfo != null) {
 				header.setResult_code("Success");
 				header.setResult_msg("0000");
-				restResp.setBody(rackList.get(0));
+				restResp.setBody(rackInfo);
 
 			} else {
 				header.setResult_code("Fail");

@@ -536,4 +536,16 @@ public class WarehouseServiceImpl implements WarehouseService {
 		}
 		return result;
 	}
+
+	@Override
+	public RackVO selectRackInfo(RackVO parameterVO) {
+		String whoAmi = Thread.currentThread().getStackTrace()[1].getMethodName();
+		RackVO result = null;
+		try{
+			result = warehouseDao.selectRackInfo(parameterVO);
+		}catch (Exception e){
+			exceptionFactory.commonException(e, whoAmi);
+		}
+		return result;
+	}
 }

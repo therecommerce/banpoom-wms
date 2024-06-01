@@ -52,6 +52,8 @@ public interface WarehouseService {
     int selectRackProductDetailTotal(Map<String, Object> parameterVO);
 	
 	List<RackVO> selectRackListAll(RackVO parameterVO);
+	
+	RackVO selectRackInfo(RackVO parameterVO);
 
 	List<RackVO> selectRackList(Map<String, Object> parameterVO);
     

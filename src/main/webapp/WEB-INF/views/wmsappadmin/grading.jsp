@@ -208,13 +208,22 @@
                                 </div>
 	                            <div class="card-content bg-blue-grey bg-lighten-5 border border-light-1 rounded p-1 d-flex">
                               		<div class="card-body pt-0">
-	                                    <div class="form-body">
-	                                       	<div class="form-group">
+	                                       	
+	                                       	    <video id="preview" width="640" height="480" autoplay></video>
+    											<video id="recording" width="640" height="480" controls></video>
+	                                       	
+											    <div>
+											        <button id="start">Start</button>
+											        <button id="stop" disabled>Stop</button>
+											        <button id="play" disabled>Play</button>
+											        <button id="save" disabled>Save</button>
+											        <button id="retake" disabled>Retake</button>
+											    </div>
+	                                       	<!-- 
 											<video class="height-350 width-550" controls>
 	    										<source id='mp4' src="${pageContext.request.contextPath}/file/down/image/${videoUrl}" type='video/mp4' />
 											</video>
-	                                      	</div>
-                                     	</div>
+											-->
                                 	</div>
                                 </div>
 
@@ -252,7 +261,6 @@
 <script src="${pageContext.request.contextPath}/resources/app-assets/js/scripts/tables/datatables/datatable-basic.js"></script>
 <script src="${pageContext.request.contextPath}/resources/app-assets/js/scripts/pages/page-users.js"></script>
 <script src="${pageContext.request.contextPath}/resources/app-assets/js/scripts/pickers/dateTime/bootstrap-datetime.js"></script>
-<script src="${pageContext.request.contextPath}/resources/app-assets/js/scripts/pickers/dateTime/pick-a-datetime.js"></script>
 <script src="${pageContext.request.contextPath}/resources/app-assets/js/scripts/pages/app-invoice.js"></script>
 <script src="${pageContext.request.contextPath}/resources/js/page-helper.js"></script>
 <script src="${pageContext.request.contextPath}/resources/js/bxlcommon.js"></script>
@@ -262,7 +270,62 @@
 
 <script>
 
+let mediaRecorder;
+let recordedBlobs;
+const preview = document.getElementById('preview');
+const recording = document.getElementById('recording');
+const startButton = $('#start');
+const stopButton = $('#stop');
+const playButton = $('#play');
+const saveButton = $('#save');
+const retakeButton = $('#retake');
+
+
  	$(document).ready(function() {
+ 		
+ 		
+        
+        init();
+
+        startButton.click(function() {
+            startRecording();
+            startButton.prop('disabled', true);
+            stopButton.prop('disabled', false);
+            retakeButton.prop('disabled', true);
+            playButton.prop('disabled', true);
+            saveButton.prop('disabled', true);
+        });
+
+        stopButton.click(function() {
+            stopRecording();
+            startButton.prop('disabled', false);
+            stopButton.prop('disabled', true);
+            retakeButton.prop('disabled', false);
+            playButton.prop('disabled', false);
+            saveButton.prop('disabled', false);
+        });
+
+        playButton.click(function() {
+            play();
+        });
+
+        saveButton.click(function() {
+            save();
+        });
+
+        retakeButton.click(function() {
+            init();
+            recording.src = '';
+            retakeButton.prop('disabled', true);
+            playButton.prop('disabled', true);
+            saveButton.prop('disabled', true);
+        });
+
+
+ 		
+ 		
+ 		return ;
+ 		
 		var product_grade = "${inspection.product_grade}";
 
 		$('.grading').each(function(index,item){
@@ -287,6 +350,79 @@
 
 
   	})
+  	
+  	  	async function init() {
+ 		
+ 	    let constraints = {
+ 	    	      video: {    width: { ideal: 1280 },
+ 	    	    	    height: { ideal: 720 },
+ 	    	    	    bitrate: { ideal: 2000000 },
+ 	    	    	    codec: "h264"},
+ 	    	      audio: true,
+ 	    	    };
+
+        navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
+          /* use the stream */
+          preview.srcObject = stream;
+          window.stream = stream;
+
+        }).catch(function (err) {
+          /* handle the error */
+          localstream = null;
+        });
+            
+ 	}
+
+        function startRecording() {
+            recordedBlobs = [];
+            const options = {mimeType: 'video/webm;codecs=vp9'};
+            mediaRecorder = new MediaRecorder(window.stream, options);
+
+            mediaRecorder.ondataavailable = handleDataAvailable;
+            mediaRecorder.start();
+
+            console.log('MediaRecorder started', mediaRecorder);
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+            console.log('Recorded Blobs: ', recordedBlobs);
+            recording.src = window.URL.createObjectURL(new Blob(recordedBlobs, {type: 'video/webm'}));
+        }
+
+        function handleDataAvailable(event) {
+            if (event.data && event.data.size > 0) {
+                recordedBlobs.push(event.data);
+            }
+        }
+
+        function play() {
+            const superBuffer = new Blob(recordedBlobs, {type: 'video/webm'});
+            recording.src = window.URL.createObjectURL(superBuffer);
+            recording.controls = true;
+            recording.play();
+        }
+
+        function save() {
+            const blob = new Blob(recordedBlobs, {type: 'video/webm'});
+            const formData = new FormData();
+            formData.append('video', blob, 'video.webm');
+
+            $.ajax({
+                url: '/upload_video', // 서버에 맞게 URL을 수정하세요.
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    console.log('Video uploaded successfully');
+                },
+                error: function(error) {
+                    console.error('Error uploading video:', error);
+                }
+            });
+        }
+
 
  	function fn_check_inspection_done() {
 	  var params = "{}";

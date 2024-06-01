@@ -315,7 +315,33 @@ function init_calendar(instance) {
 }
 
 
-function call_ajax(uri, callback){
+function fn_call_ajax(uri, params, callback){
+	
+	if(uri == null || uri == "") {
+		callback(null);
+		return ;
+	}
+			
+	$.ajax({
+		url : uri,
+		type : "POST",
+		data: JSON.stringify(params),
+      	contentType : "application/json;",
+		success : function(result) {
+			if(callback != null) {
+				callback(result);
+			}
+		},
+		error: function (request, status, error) {
+        	console.log("code: " + request.status)
+        	console.log("message: " + request.responseText)
+        	console.log("error: " + error);
+    	}
+	});		
+}
+
+
+function call_ajax(url, callback){
 
 	var params = $("form[name=parameterVO]").serialize();
 
@@ -474,7 +500,8 @@ function fn_get_breath_status(val) {
 
     function fn_print_barcode(barcode) {
 
-    	window.open("http://127.0.0.1:8080/LabelPrinter.html?barcode=" + barcode, 'pop01', 'top=10, left=10, width=10, height=10, status=no, menubar=no, toolbar=no, resizable=no');
+    	window.open("http://192.168.0.34:8080/LabelPrinter.html?barcode=" + barcode);
+    	//window.open("http://www.naver.com");
     }
 
 

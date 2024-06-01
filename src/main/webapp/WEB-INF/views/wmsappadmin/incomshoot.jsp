@@ -127,6 +127,14 @@
 		                    	<div class="row">
 	                           		<div class="form-body col-md-8">
 	                                	<div class="form-group row">
+	                                   		<label class="col-md-3 label-control text-bold-700" for="eventRegInput3">바코드</label>
+	                                      	<div class="col-md-8">
+	                                            <input type="text" class="form-control" id="idBarcode">
+	                                        </div>
+	                                   	</div>
+	                               	</div>
+	                           		<div class="form-body col-md-8">
+	                                	<div class="form-group row">
 	                                   		<label class="col-md-3 label-control text-bold-700" for="eventRegInput3">상품번호</label>
 	                                      	<div class="col-md-8">
 	                                            <input readonly type="text" class="form-control" id="idProductId">
@@ -224,26 +232,34 @@
 <script src="${pageContext.request.contextPath}/resources/app-assets/js/scripts/tables/datatables/datatable-basic.js"></script>
 <script src="${pageContext.request.contextPath}/resources/app-assets/js/scripts/pages/page-users.js"></script>
 <script src="${pageContext.request.contextPath}/resources/app-assets/js/scripts/pickers/dateTime/bootstrap-datetime.js"></script>
-<script src="${pageContext.request.contextPath}/resources/app-assets/js/scripts/pickers/dateTime/pick-a-datetime.js"></script>
 <script src="${pageContext.request.contextPath}/resources/app-assets/js/scripts/pages/app-invoice.js"></script>
 <script src="${pageContext.request.contextPath}/resources/js/page-helper.js"></script>
 <!-- END: Page JS-->
 
 <script>
-  $(document).ready(function() {
-    let columnFields = ["tracking_number", "product_id", "product_name", "video_state", "picture_state", "seller_name"];
-    let columWidths = [30, 30, 30, 30, 30, 30];
 
-    fn_set_datatable("#user_data_table1");
-    init_datatable("${pageContext.request.contextPath}/wmsappadmin/incomshootstatus.json", columnFields, columWidths, fn_tbl_render);
-      	
-  	setInterval(function () {
-       	
-      	fn_set_shoot_status();
-      	fn_search("#user_data_table1")
-      	
-    }, 1000);
-  })
+	
+	$(document).ready(function() {
+		let columnFields = ["tracking_number", "product_id", "product_name", "video_state", "picture_state", "seller_name"];
+	    let columWidths = [30, 30, 30, 30, 30, 30];
+	
+	    fn_set_datatable("#user_data_table1");
+	    init_datatable("${pageContext.request.contextPath}/wmsappadmin/incomshootstatus.json", columnFields, columWidths, fn_tbl_render);
+	      	
+	  	setInterval(function () {
+	       	
+	        $("#idBarcode").focus();
+	
+	      	fn_set_shoot_status();
+	      	fn_search("#user_data_table1")
+	      	
+	    }, 1000);
+	  	
+	  	init_barcode_scan();
+	  	
+	  	  	
+	
+	  })
   
       function fn_tbl_render(data, type, full, meta) {
         
@@ -332,27 +348,43 @@
       });
    }
   
+ 	let g_barCode = "";
+	let g_finishScan = false;
+	let g_startTime = 0;
+
+	function init_barcode_scan() {
+
+	  let inputTimeout;
+	  $("#idBarcode").focus();
+	  $('#idBarcode').on('keydown', function() {
+	    	
+	
+	  	const currentTime = Date.now();
+	    const elapsedTime = currentTime - g_startTime;
+	
+	    if (elapsedTime >= 1000) {
+	    	$(this).val("");
+	        g_startTime = Date.now();
+	   	}
+	
+	   	if($(this).val().length > 10) {
+	    	console.log($(this).val());
+	    	g_startTime = Date.now();
+	    	
+	    	let url = "${pageContext.request.contextPath}/product-info/stock";
+	    	let params = {};
+	    	params.tracking_no = $(this).val();
+	    	fn_call_ajax(url, params, function(result) {
+	    		console.log(result);
+	    		
+	    	});	
+
+	    } 
+	  });
+  }
+  
   function fn_move_grading() {	
 		location.href = "${pageContext.request.contextPath}/wmsappadmin/grading.do?product_id=" + product_id;
-		/*
-		console.log("START");
-			var params = "token=123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890&eca=2222"
-			
-			$.ajax({
-				url : "http://127.0.0.1:28481/api/PSMPTool/launch",
-				type : "POST",
-				data: params,
-				contentType: "text/plain",
-				success : function(result) {
-					console.log(result);
-				},
-				error: function (request, status, error) {
-		        	console.log("code: " + request.status)
-		        	console.log("message: " + request.responseText)
-		        	console.log("error: " + error);
-		    	}
-			});		
-			*/
 
   }
   
@@ -373,6 +405,9 @@
     }
     
   }   // 검색
+  
+  
+  
 
 </script>
 

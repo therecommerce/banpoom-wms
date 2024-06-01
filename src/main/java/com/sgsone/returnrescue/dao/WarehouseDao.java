@@ -269,6 +269,7 @@ public class WarehouseDao {
 		return result;
 	}
 
+
 	public int insertProductReleaseState(InventoryVO parameterVO) {
 		String whoAmi = Thread.currentThread().getStackTrace()[1].getMethodName();
 
@@ -414,6 +415,21 @@ public class WarehouseDao {
 			return 0;
 		}
 	}
+	
+	public RackVO selectRackInfo(RackVO parameterVO) {
+		String whoAmi = Thread.currentThread().getStackTrace()[1].getMethodName();
+
+		RackVO result = null;
+
+		try {
+			result = sqlSessionTemplate.selectOne("warehouse.selectRackInfo", parameterVO);
+		} catch (Exception e) {
+			exceptionFactory.commonException(e, whoAmi);
+			return null;
+		}
+		return result;
+	}
+
 	
 	public List<InventoryVO> selectInventoryList(Map<String, Object> parameterVO) {
 		String whoAmi = Thread.currentThread().getStackTrace()[1].getMethodName();

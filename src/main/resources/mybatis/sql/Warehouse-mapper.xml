@@ -502,6 +502,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 			AND tr.rack_id LIKE CONCAT('%',#{rack_id},'%')
         </if>
 	</select>
+	
+	<select id="selectRackInfo" parameterType="RackVO" resultType="RackVO">
+		SELECT tr.rack_id,
+		       tr.rack_code,
+		       tr.barcode,
+		       tr.site_id,
+		       tr.cell_id,
+		       tr.rack_name
+		FROM TBL_RACK tr
+		WHERE tr.barcode = #{barcode}
+	</select>
+	
 
 
 	<select id="selectRackList" parameterType="hashmap" resultType="RackVO">
