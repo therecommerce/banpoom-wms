@@ -500,9 +500,59 @@ function fn_get_breath_status(val) {
 
     function fn_print_barcode(barcode) {
 
-    	window.open("http://192.168.0.34:8080/LabelPrinter.html?barcode=" + barcode);
-    	//window.open("http://www.naver.com");
+		//window.open("http://118.36.28.145:8080/LabelPrinter.html?barcode=" + barcode);
+		//window.open("http://www.naver.com");
+
+		PrintBarcode(barcode);
     }
+
+var _inch = 2;
+var rotation = 3;
+var issueID = 1;
+
+
+
+function PrintBarcode(barcode) {
+	var barCodeData = barcode;
+	var barCodeSymbol = 7;
+	var barCodeHeight = 100;
+	var barWidth = 6;
+	var nBarWidth = parseInt(barWidth / 2);
+	var barCodeHri = 2;
+
+	setLabelId(issueID);
+
+	checkLabelStatus();
+	clearBuffer();
+	if(_inch == 2) {
+		// 2inch sample
+		setWidth(432);
+	} else if(_inch == 3) {
+		// 3inch sample
+		setWidth(576);
+	} else if(_inch == 4) {
+		// 4inch sample
+		setWidth(832);
+	} else {
+		// error
+		return;
+	}
+	draw1DBarcode(barCodeData, 50, 50, barCodeSymbol, nBarWidth, barWidth, barCodeHeight, 0, 2);
+	printBuffer();
+
+	var strSubmit = getLabelData();
+
+	console.log(strSubmit);
+
+	issueID++;
+	requestPrint("Printer1", strSubmit, viewResult);
+}
+
+	function viewResult(result) {
+		console.log("PrintResult=" + result);
+		self.close();
+	}
+
 
 
 

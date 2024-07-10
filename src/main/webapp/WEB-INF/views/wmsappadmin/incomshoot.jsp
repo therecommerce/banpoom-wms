@@ -72,62 +72,17 @@
     <hr>
     <div class="content-body">
             <section class="row all-contacts">
-                <div class="col-md-6 col-12">
-                    <div class="card">
-                      	<div class="card-header">
-                       		<h4 class="card-title">제품 촬영 상태</h4>
-                        </div>
-	                  	<div class="card-content bg-blue-grey bg-lighten-5 border border-light-1 rounded d-flex">
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-lg-3 col-md-6 col-6">
-                                        <div class="text-center">
-                                            <div id="shootProc1" class="avatar avatar-xxl bg-blue-grey bg-lighten-3">
-                                                <span class="feather icon-camera"></span>
-                                            </div>
-                                            <span class="blue-grey darken-1 block">영상촬영 중</span>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-3 col-md-6 col-6">
-                                        <div class="text-center">
-                                            <div id="shootProc2" class="avatar avatar-xxl bg-blue-grey bg-lighten-3">
-                                                <span class="feather icon-camera"></span>
-                                            </div>
-                                            <span class="blue-grey darken-1 block">영상촬영 완료</span>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-3 col-md-6 col-6">
-                                        <div class="text-center">
-                                            <div id="shootProc4" class="avatar avatar-xxl bg-blue-grey bg-lighten-3">
-                                                <span class="feather icon-camera"></span>
-                                            </div>
-                                            <span class="blue-grey darken-1 block">제품촬영 중</span>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-3 col-md-6 col-6">
-                                        <div class="text-center">
-                                            <div id="shootProc5" class="avatar avatar-xxl bg-blue-grey bg-lighten-3">
-                                                <span class="feather icon-camera"></span>
-                                            </div>
-                                            <span class="blue-grey darken-1 block">제품촬영 완료</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-               	</div>
              	<div class="col-md-6 col-12">
                     <div class="card">
                       	<div class="card-header">
-                       		<h4 class="card-title" id="moveGrading">촬영중인 제품 정보</h4>
+                       		<h4 class="card-title" id="moveGrading">상품조회</h4>
                         </div>
 	                  	<div class="card-content bg-blue-grey bg-lighten-5 border border-light-1 rounded d-flex">
                         	<div class="card-body pt-2">
 		                    	<div class="row">
 	                           		<div class="form-body col-md-8">
 	                                	<div class="form-group row">
-	                                   		<label class="col-md-3 label-control text-bold-700" for="eventRegInput3">바코드</label>
+	                                   		<label class="col-md-3 label-control text-bold-700" for="idBarcode">바코드</label>
 	                                      	<div class="col-md-8">
 	                                            <input type="text" class="form-control" id="idBarcode">
 	                                        </div>
@@ -135,34 +90,26 @@
 	                               	</div>
 	                           		<div class="form-body col-md-8">
 	                                	<div class="form-group row">
-	                                   		<label class="col-md-3 label-control text-bold-700" for="eventRegInput3">상품번호</label>
+	                                   		<label class="col-md-3 label-control text-bold-700" for="idBarcodeManual">수기입력</label>
 	                                      	<div class="col-md-8">
-	                                            <input readonly type="text" class="form-control" id="idProductId">
-	                                        </div>
-	                                   	</div>
-	                               	</div>
-	                           		<div class="form-body col-md-8">
-	                                	<div class="form-group row">
-	                                   		<label class="col-md-3 label-control text-bold-700" for="eventRegInput3">상품명</label>
-	                                      	<div class="col-md-8">
-	                                            <input readonly type="text" class="form-control" id="idProductName">
+	                                            <input  type="text" class="form-control" id="idBarcodeManual">
 	                                        </div>
 	                                   	</div>
 	                               	</div>
 	                           		<div class="form-body col-md-4">
 	                                	<div class="form-group row">
 	                                      	<div class="col-md-8">
-				                        	<button type="button" class="float-center btn btn-blue btn-min-width" onclick="javascript:fn_move_grading()">등급판정</button>
+                                                <button type="button" class="float-center btn btn-blue btn-min-width" onclick="javascript:fn_productinfo_stock(document.getElementById('idBarcodeManual').value)">조회</button>
 	                                        </div>
 	                                   	</div>
 	                               	</div>
-		                      	</div>  
+		                      	</div>
                         	</div>
                         </div>
                     </div>
                	</div>
           	</section>
-            
+
 
       <!-- 리스트 -->
   	<section class="row all-contacts">
@@ -237,34 +184,60 @@
 <!-- END: Page JS-->
 
 <script>
-
-	
 	$(document).ready(function() {
 		let columnFields = ["tracking_number", "product_id", "product_name", "video_state", "picture_state", "seller_name"];
 	    let columWidths = [30, 30, 30, 30, 30, 30];
-	
+
 	    fn_set_datatable("#user_data_table1");
 	    init_datatable("${pageContext.request.contextPath}/wmsappadmin/incomshootstatus.json", columnFields, columWidths, fn_tbl_render);
-	      	
-	  	setInterval(function () {
-	       	
-	        $("#idBarcode").focus();
-	
-	      	fn_set_shoot_status();
-	      	fn_search("#user_data_table1")
-	      	
-	    }, 1000);
-	  	
-	  	init_barcode_scan();
-	  	
-	  	  	
-	
-	  })
-  
+
+        let focusInterval = setInterval(function () {
+            if (!$("#idBarcodeManual").is(":focus")) {
+                $("#idBarcode").focus();
+            }
+            fn_search("#user_data_table1");
+
+        }, 500000);
+
+        $('#idBarcodeManual').focus(function() {
+            $("#idBarcodeManual").val("");
+            clearInterval(focusInterval);
+        });
+
+        $('#idBarcodeManual').blur(function() {
+            focusInterval = setInterval(function () {
+                if (!$("#idBarcodeManual").is(":focus")) {
+                    $("#idBarcode").focus();
+                }
+                fn_search("#user_data_table1");
+            }, 5000);
+
+            $("#idBarcode").focus();
+        });
+
+        init_barcode_scan();
+    })
+
       function fn_tbl_render(data, type, full, meta) {
-        
+
         var title = null;
-	   	if (meta.col == 3) {
+
+
+
+          if(meta.col == 0 || meta.col == 1 || meta.col == 2) {
+
+              let description = "";
+              if(meta.col == 0)
+                  description = full.tracking_number;
+              else  if(meta.col == 1)
+                  description = full.product_id;
+              else  if(meta.col == 2)
+                  description = full.product_name;
+
+
+              return '<a target="_blank" onclick="javascript:fn_move_grading(\'' +  full.product_id + '\')">' + description + '</a>';
+          }
+          else if (meta.col == 3) {
             if (full.video_state == 'S') {
                 return '촬영중'
             } else if (full.video_state == 'F') {
@@ -289,65 +262,6 @@
         }
     }
 
-  // 촬영 상태에 따라 상단 Avatar영역의 색상을 변경한다. 
-  var product_id = "";
-  function fn_set_shoot_status() {
-	  var params = "{}";
-	  	  
-	  $.ajax({
-      	url : "${pageContext.request.contextPath}/wmsappadmin/inspectionState.json",
-        type : "POST",
-        data : params,
-        success : function(result) {
-        	
-        	if(result.resultCode != "success")
-        		return ;
-        	        	        	
-        	product_id = result.inspection.product_id;
-        	var video_state = result.inspection.video_state;
-        	var picture_state = result.inspection.picture_state;
-        	        		
-	       	$(".avatar").removeClass("bg-blue");
-	       	$(".avatar").addClass("bg-blue-grey bg-lighten-3");
-	       	
-	       	if(video_state == 'S') {
-		        $("#shootProc1").removeClass("bg-blue-grey bg-lighten-3");
-		        $("#shootProc1").addClass("bg-blue");
-	       	} else if(video_state == 'F') {
-		        $("#shootProc1").removeClass("bg-blue-grey bg-lighten-3");
-		        $("#shootProc1").addClass("bg-blue");
-		        $("#shootProc2").removeClass("bg-blue-grey bg-lighten-3");
-		        $("#shootProc2").addClass("bg-blue");
-	       	}
-	        		    	
-	       	if(picture_state == 'S') {
-		        $("#shootProc4").removeClass("bg-blue-grey bg-lighten-3");
-		        $("#shootProc4").addClass("bg-blue");
-	       	} else if(picture_state == 'F') {
-		        $("#shootProc4").removeClass("bg-blue-grey bg-lighten-3");
-		        $("#shootProc4").addClass("bg-blue");
-		        $("#shootProc5").removeClass("bg-blue-grey bg-lighten-3");
-		        $("#shootProc5").addClass("bg-blue");
-	       	}
-	    	
-        	$("#idProductId").val(result.inspection.product_id);
-        	$("#idProductName").val(result.inspection.product_name);
-
-
-        	//영상/제출 촬영이 완료되면 5초후 등급판정 화면으로 자동으로 넘어감
-        	if(video_state == 'F' && picture_state == 'F') {
-
-        		$("#moveGrading").text("잠시후, 등급판정 페이지로 이동됩니다.");
-        		$("#moveGrading").css({'color':'red'})
-
-              	setTimeout(function () {
-              		fn_move_grading();
-                }, 5000);
-        	}
-	 	}
-      });
-   }
-  
  	let g_barCode = "";
 	let g_finishScan = false;
 	let g_startTime = 0;
@@ -357,39 +271,44 @@
 	  let inputTimeout;
 	  $("#idBarcode").focus();
 	  $('#idBarcode').on('keydown', function() {
-	    	
-	
+
+
 	  	const currentTime = Date.now();
 	    const elapsedTime = currentTime - g_startTime;
-	
+
 	    if (elapsedTime >= 1000) {
 	    	$(this).val("");
 	        g_startTime = Date.now();
 	   	}
-	
-	   	if($(this).val().length > 10) {
+
+	   	if($(this).val().length == 12 || $(this).val().length == 13) {
 	    	console.log($(this).val());
 	    	g_startTime = Date.now();
-	    	
-	    	let url = "${pageContext.request.contextPath}/product-info/stock";
-	    	let params = {};
-	    	params.tracking_no = $(this).val();
-	    	fn_call_ajax(url, params, function(result) {
-	    		console.log(result);
-	    		
-	    	});	
 
-	    } 
+            fn_productinfo_stock($(this).val());
+	    }
 	  });
   }
-  
-  function fn_move_grading() {	
-		location.href = "${pageContext.request.contextPath}/wmsappadmin/grading.do?product_id=" + product_id;
+
+  function fn_productinfo_stock(tracking_no) {
+      let url = "${pageContext.request.contextPath}/product-info/stock";
+      let params = {};
+      params.tracking_no = tracking_no;
+      fn_call_ajax(url, params, function(result) {
+          console.log(result);
+
+          fn_search("#user_data_table1")
+
+      });
 
   }
-  
+
+  function fn_move_grading(product_id) {
+		location.href = "${pageContext.request.contextPath}/wmsappadmin/grading.do?product_id=" + product_id;
+  }
+
   function fn_search(datatable_id) {
-	  	  
+
     let table = $(datatable_id).DataTable();
     let numCols = table.columns().nodes().length;
     let search = null;
@@ -397,17 +316,14 @@
     for(let i=0; i<numCols; i++) {
       table.column(i).search('');
     }
-
     search = table.column(0).search("");
-
     if(search != null) {
       search.draw();
     }
-    
   }   // 검색
-  
-  
-  
+
+
+
 
 </script>
 

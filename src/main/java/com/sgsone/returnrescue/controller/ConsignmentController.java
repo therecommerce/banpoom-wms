@@ -1113,7 +1113,7 @@ public class ConsignmentController {
 				RestTemplate restTemplate = new RestTemplate(requestFactory);
 
 				String url = "https://therecommerce.kr/naver/product/regist/" + parameterVO.getProduct_id_list().get(i);
-//				String url = "https://localhost:8981/naver/product/regist/" + parameterVO.getProduct_id_list().get(i);
+			//	String url = "https://192.168.0.3:8981/naver/product/regist/" + parameterVO.getProduct_id_list().get(i);
 				//        RestTemplate restTemplate = new RestTemplate();
 				restTemplate.postForEntity(url, null , String.class);
 

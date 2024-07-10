@@ -49,6 +49,35 @@
 	<link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/resources/assets/css/style.css">
 	<link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/resources/app-assets/css/pages/page-users.css">
 	<!-- END: Custom CSS-->
+
+	<style>
+		video, canvas, img {
+			display: block;
+			margin: 10px 0;
+		}
+		#default-img {
+			width: 640px;
+			height: 480px;
+			background: url('default-image.jpg') center center no-repeat;
+			background-size: cover;
+		}
+		#controls {
+			display: flex;
+			gap: 10px;
+			margin-top: 10px;
+		}
+		#preview-container {
+			position: relative;
+			width: 640px;
+			height: 480px;
+			overflow: hidden;
+		}
+		#preview {
+			position: absolute;
+			transform-origin: center center;
+		}
+	</style>
+
 </head>
 <!-- END: Head-->
 
@@ -69,7 +98,7 @@
 			<section class="row">
 
 				<!--입고영상 -->
-				<div class="col-md-4 col-12">
+				<div class="col-md-5 col-12">
 					<div class="card bg-calendar">
 						<div class="card-header">
 							<h4 class="card-title">입고영상</h4>
@@ -77,20 +106,17 @@
 						<div class="card-content bg-blue-grey bg-lighten-5 border border-light-1 rounded p-1 d-flex">
 							<div class="card-body pt-0">
 
-								<div>
+								<div id="preview-container">
 									<video id="preview" width="320" height="240" autoplay></video>
 								</div>
 								<video id="recording" width="320" height="240" controls></video>
 
-								<div class="text-center">
-									<button type="button" class="btn btn-secondary mt-1" id="startBtn" onclick="javascript:startRecording()">영상촬영</button>
-									<button type="button" class="btn btn-secondary mt-1" id="stopBtn" onclick="javascript:stopRecording()" disabled>촬영종료</button>
-									<button type="button" class="btn btn-secondary mt-1" id="playBtn" onclick="javascript:playVideo()" disabled>영상재생</button>
-									<button type="button" class="btn btn-secondary mt-1" id="saveBtn" onclick="javascript:saveVideo()" disabled>영상저장</button>
-									<button type="button" id="idZoomOut" class="btn btn-blue mt-1" onclick="javascript:zoomOut()">ZoomOut</button>
-									<button type="button" id="idZoomIn" class="btn btn-blue mt-1" onclick="javascript:zoomIn()">ZoomIn</button>
-
-
+								<div>
+									<button id="start">Start</button>
+									<button id="stop" disabled>Stop</button>
+									<button id="play" disabled>Play</button>
+									<button id="save" disabled>Save</button>
+									<button id="retake" disabled>Retake</button>
 								</div>
 								<!--
 											<video class="height-350 width-550" controls>
@@ -105,55 +131,39 @@
 				</div>
 
 				<!-- 제품사진 -->
-				<div class="col-md-8 col-12">
+				<div class="col-md-7 col-12">
 					<div class="card bg-usage">
 						<div class="card-header">
 							<h4 class="card-title">제품사진</h4>
 						</div>
 						<div class="card-content bg-blue-grey bg-lighten-5 border border-light-1 rounded p-1 d-flex">
 							<div class="card-body pt-0">
+								<canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
+								<img id="captured-image" src="default-image.jpg" alt="Captured Image" width="640" height="480">
+								<div>
+									<button id="capture">Capture Photo</button>
+									<button id="savePicture" >Save Photo</button>
+									<button id="zoom-in">Zoom In</button>
+									<button id="zoom-out">Zoom Out</button>
 
-								<canvas id="canvas_video" width="640" height="480" style="display: none;"></canvas>
-								<canvas id="canvas_front" width="640" height="480" style="display: none;"></canvas>
-								<canvas id="canvas_side" width="640" height="480" style="display: none;"></canvas>
-								<canvas id="canvas_back" width="640" height="480" style="display: none;"></canvas>
-								<canvas id="canvas_defect" width="640" height="480" style="display: none;"></canvas>
+								</div>
+								<div id="error-message" style="color: red;"></div>
+
+
 
 								<ul class="list-inline">
-									<li class="list-inline-item text-center">
-										<div class="bg-blue-grey bg-lighten-5 border border-light-1 rounded p-1 d-flex">
-											<div class="text-center">
-												<img id="img_front" src="default-image.jpg" class="rounded" alt="ProductImage" height="140" width="140">
+									<c:forEach var="fileList" items="${fileList}" varStatus="status">
+										<li class="list-inline-item">
+											<p class="mt-50 mb-0">${fileList.file_state}</p>
+											<div class="bg-blue-grey bg-lighten-5 border border-light-1 rounded p-1 d-flex">
+												<div class="text-center">
+													<img src="${pageContext.request.contextPath}/file/down/image/${fileList.file_id}"
+														 class="rounded" alt="ProductImage" height="140" width="140">
+												</div>
 											</div>
-										</div>
-										<button type="button" class="btn btn-blue mt-1" onclick="javascript:capturePhoto('앞면', 'img_front', 'canvas_front')">앞면</button>
-									</li>
-									<li class="list-inline-item text-center">
-										<div class="bg-blue-grey bg-lighten-5 border border-light-1 rounded p-1 d-flex">
-											<div class="text-center">
-												<img id="img_side" src="default-image.jpg" class="rounded" alt="ProductImage" height="140" width="140">
-											</div>
-										</div>
-										<button type="button" class="btn btn-blue mt-1" onclick="javascript:capturePhoto('측면', 'img_side', 'canvas_side')">측면</button>
-									</li>
-									<li class="list-inline-item text-center">
-										<div class="bg-blue-grey bg-lighten-5 border border-light-1 rounded p-1 d-flex">
-											<div class="text-center">
-												<img id="img_back" src="default-image.jpg" class="rounded" alt="ProductImage" height="140" width="140">
-											</div>
-										</div>
-										<button type="button" class="btn btn-blue mt-1" onclick="javascript:capturePhoto('뒷면', 'img_back', 'canvas_back')">뒷면</button>
-									</li>
-									<li class="list-inline-item text-center">
-										<div class="bg-blue-grey bg-lighten-5 border border-light-1 rounded p-1 d-flex">
-											<div class="text-center">
-												<img id="img_defect" src="default-image.jpg" class="rounded" alt="ProductImage" height="140" width="140">
-											</div>
-										</div>
-										<button type="button" class="btn btn-blue mt-1" onclick="javascript:capturePhoto('하자', 'img_defect', 'canvas_defect')">하자</button>
-									</li>
+										</li>
+									</c:forEach>
 								</ul>
-								<button type="button" class="btn btn-blue mt-1" onclick="javascript:saveAllPhoto()">사진저장</button>
 							</div>
 						</div>
 					</div>
@@ -180,33 +190,38 @@
 							<div class="card-body pt-0">
 								<div class="form-body">
 									<div class="form-group row">
-										<label class="col-md-3 label-control text-bold-700 text-righ">반품송장번호</label>
+										<label class="col-md-3 label-control text-bold-700 text-right"
+											   for="eventRegInput3">반품송장번호</label>
 										<div class="col-md-8">
-											<input type="text" class="form-control" value="${inspection.tracking_number}">
+											<input type="text" class="form-control" id="eventRegInput1" value="${inspection.tracking_number}">
 										</div>
 									</div>
 									<div class="form-group row">
-										<label class="col-md-3 label-control text-bold-700 text-right">상품번호</label>
+										<label class="col-md-3 label-control text-bold-700 text-right"
+											   for="eventRegInput3">상품번호</label>
 										<div class="col-md-8">
-											<input type="text" class="form-control" value="${inspection.product_id}">
+											<input type="text" class="form-control" id="eventRegInput1" value="${inspection.product_id}">
 										</div>
 									</div>
 									<div class="form-group row">
-										<label class="col-md-3 label-control text-bold-700 text-right">원상품명</label>
+										<label class="col-md-3 label-control text-bold-700 text-right"
+											   for="eventRegInput3">원상품명</label>
 										<div class="col-md-8">
-											<input type="text" class="form-control" value="${inspection.product_name}">
+											<input type="text" class="form-control" id="eventRegInput1" value="${inspection.product_name}">
 										</div>
 									</div>
 									<div class="form-group row mb-0">
-										<label class="col-md-3 label-control text-bold-700 text-right">반품사유</label>
+										<label class="col-md-3 label-control text-bold-700 text-right"
+											   for="eventRegInput3">반품사유</label>
 										<div class="col-md-8">
-											<input type="text" class="form-control"  value="${inspection.return_reason}">
+											<input type="text" class="form-control" id="eventRegInput1" value="${inspection.return_reason}">
 										</div>
 									</div>
 									<div class="form-group row mb-0">
-										<label class="col-md-3 label-control text-bold-700 text-right">셀러명</label>
+										<label class="col-md-3 label-control text-bold-700 text-right"
+											   for="eventRegInput3">셀러명</label>
 										<div class="col-md-8">
-											<input type="text" class="form-control"  value="${inspection.seller_name}">
+											<input type="text" class="form-control" id="eventRegInput1" value="${inspection.seller_name}">
 										</div>
 									</div>
 								</div>
@@ -307,17 +322,93 @@
 	let recordedBlobs;
 	const preview = document.getElementById('preview');
 	const recording = document.getElementById('recording');
+	const startButton = $('#start');
+	const stopButton = $('#stop');
+	const playButton = $('#play');
+	const saveButton = $('#save');
+	const retakeButton = $('#retake');
 
 	//사진찍기
 	let videoStream;
 	let videoTrack;
 	let zoomLevel = 0;
+	const canvas = document.getElementById('canvas');
+	const capturedImage = document.getElementById('captured-image');
+	const captureButton = $('#capture');
+	const savePictureButton = $('#savePicture');
+	const errorMessage = $('#error-message');
+	const zoomInButton = $('#zoom-in');
+	const zoomOutButton = $('#zoom-out');
+
+
 
 	$(document).ready(function() {
 
 		init();
 
-		$("#recording").hide();
+		captureButton.click(function() {
+			capturePhoto();
+		});
+
+		savePictureButton.click(function() {
+			savePhoto();
+		});
+
+		zoomInButton.click(function() {
+			zoomIn();
+		});
+
+		zoomOutButton.click(function() {
+			zoomOut();
+		});
+
+		startButton.click(function() {
+			startRecording();
+			startButton.prop('disabled', true);
+			stopButton.prop('disabled', false);
+			retakeButton.prop('disabled', true);
+			playButton.prop('disabled', true);
+			saveButton.prop('disabled', true);
+		});
+
+		stopButton.click(function() {
+			stopRecording();
+			startButton.prop('disabled', false);
+			stopButton.prop('disabled', true);
+			retakeButton.prop('disabled', false);
+			playButton.prop('disabled', false);
+			saveButton.prop('disabled', false);
+		});
+
+		playButton.click(function() {
+			play();
+		});
+
+		saveButton.click(function() {
+			save();
+		});
+
+		retakeButton.click(function() {
+			init();
+			recording.src = '';
+			retakeButton.prop('disabled', true);
+			playButton.prop('disabled', true);
+			saveButton.prop('disabled', true);
+		});
+
+
+
+
+		return ;
+
+		var product_grade = "${inspection.product_grade}";
+
+		$('.grading').each(function(index,item){
+			if($(this).attr("grade") == product_grade) {
+				$(this).removeClass("bg-blue-grey");
+				$(this).addClass("bg-red");
+			}
+		});
 
 		$(".grading").on('click', function(event){
 			$(".grading").removeClass("bg-red");
@@ -326,6 +417,11 @@
 			$(this).addClass("bg-red");
 		});
 
+		setInterval(function () {
+
+			fn_check_inspection_done();
+
+		}, 1000);
 	})
 
 	async function init() {
@@ -344,43 +440,32 @@
 			// Check if zoom is supported
 			const capabilities = videoTrack.getCapabilities();
 
-			if (!capabilities.zoom) {
-				$("#idZoomIn").hide();
-				$("#idZoomOut").hide();
-				console.log('Zoom is not supported on this device.');
-			}
-
 			console.log(capabilities);
 			console.log(videoTrack.getSettings());
 
+			if (capabilities.zoom) {
+				errorMessage.text('');
+				zoomInButton.prop('disabled', false);
+				zoomOutButton.prop('disabled', false);
+			} else {
+				errorMessage.text('Zoom is not supported on this device.');
+				zoomInButton.prop('disabled', true);
+				zoomOutButton.prop('disabled', true);
+			}
 		} catch (error) {
+			errorMessage.text('Error accessing media devices. Please ensure you are using a modern browser and have granted permission to access the camera.');
 			console.error('Error accessing media devices.', error);
 		}
 	}
 
-	function capturePhoto(around, imgsrc, canvassrc) {
-
-		const canvas = document.getElementById(canvassrc);
+	function capturePhoto() {
 		const context = canvas.getContext('2d');
 		context.drawImage(preview, 0, 0, canvas.width, canvas.height);
-		const capturedImage = document.getElementById(imgsrc);
-
 		capturedImage.src = canvas.toDataURL('image/png');
 		saveButton.prop('disabled', false);
 	}
 
-	function saveAllPhoto() {
-		savePhoto("canvas_front");
-		savePhoto("canvas_side");
-		savePhoto("canvas_back");
-		savePhoto("canvas_defect");
-	}
-
-
-	function savePhoto(canvassrc) {
-
-		const canvas = document.getElementById(canvassrc);
-
+	function savePhoto() {
 		const dataUrl = canvas.toDataURL('image/png');
 		const blob = dataURLToBlob(dataUrl);
 		const formData = new FormData();
@@ -423,19 +508,10 @@
 	}
 
 	function zoomOut() {
-
 		if (videoTrack) {
 			const capabilities = videoTrack.getCapabilities();
 			const settings = videoTrack.getSettings();
-
-			console.log(capabilities.zoom);
-			console.log(settings);
-
-			console.log("ttt");
 			if (capabilities.zoom && settings.zoom > capabilities.zoom.min) {
-
-				console.log("ttt2");
-
 				zoomLevel = zoomLevel - 100;
 				videoTrack.applyConstraints({ advanced: [{ zoom: zoomLevel }] });
 			}
@@ -459,49 +535,34 @@
 	function startRecording() {
 		recordedBlobs = [];
 		const options = {mimeType: 'video/webm;codecs=vp9'};
-		mediaRecorder = new MediaRecorder(videoStream, options);
+		mediaRecorder = new MediaRecorder(window.stream, options);
+
 		mediaRecorder.ondataavailable = handleDataAvailable;
 		mediaRecorder.start();
+
 		console.log('MediaRecorder started', mediaRecorder);
-
-		$("#recording").hide();
-
-		// 버튼 상태 변경
-		document.getElementById('startBtn').disabled = true;
-		document.getElementById('startBtn').classList.replace('btn-secondary', 'btn-red');
-		document.getElementById('stopBtn').disabled = false;
-		document.getElementById('playBtn').disabled = true;
-		document.getElementById('saveBtn').disabled = true;
 	}
 
 	function stopRecording() {
 		mediaRecorder.stop();
 		console.log('Recorded Blobs: ', recordedBlobs);
 		recording.src = window.URL.createObjectURL(new Blob(recordedBlobs, {type: 'video/webm'}));
-
-		// 버튼 상태 변경
-		document.getElementById('startBtn').disabled = false;
-		document.getElementById('startBtn').classList.replace('btn-red', 'btn-secondary');
-		document.getElementById('stopBtn').disabled = true;
-		document.getElementById('playBtn').disabled = false;
-		document.getElementById('saveBtn').disabled = false;
 	}
+
 	function handleDataAvailable(event) {
 		if (event.data && event.data.size > 0) {
 			recordedBlobs.push(event.data);
 		}
 	}
 
-	function playVideo() {
-		$("#recording").show();
-
+	function play() {
 		const superBuffer = new Blob(recordedBlobs, {type: 'video/webm'});
 		recording.src = window.URL.createObjectURL(superBuffer);
 		recording.controls = true;
 		recording.play();
 	}
 
-	function saveVideo() {
+	function save() {
 		const blob = new Blob(recordedBlobs, { type: 'video/webm' });
 		const formData = new FormData();
 		formData.append('files', blob, 'video.webm');
@@ -530,6 +591,26 @@
 	}
 
 
+	function fn_check_inspection_done() {
+		var params = "{}";
+
+		$.ajax({
+			url : "${pageContext.request.contextPath}/wmsappadmin/inspectionState.json",
+			type : "POST",
+			data : params,
+			success : function(result) {
+				if(result.resultCode != "success")
+					return ;
+
+				if(result.check_yn ==  "Y" && result.product_barcode != null) {
+					fn_print_barcode(result.product_barcode);
+				}
+			}
+		});
+	}
+
+
+
 	function fn_selected_grade() {
 		var selected_grade = "";
 
@@ -542,32 +623,30 @@
 	}
 
 	function fn_inspection_done() {
-
-		alert("fn_inspection_done")
 		var params = {
 			'product_grade': fn_selected_grade(),
 			'inspection_opinion': $("#inspection_opinion").val(),
 			'product_id': '${inspection.product_id}'
 		}
 
-		let url = "${pageContext.request.contextPath}/product-inspection";
-		fn_call_ajax(url, params, function(result) {
-			console.log(result);
-			if (result.header.result_code == "Success") {
-				location.href = "${pageContext.request.contextPath}/wmsappadmin/incomshoot.do"
+		$.ajax({
+			url : "${pageContext.request.contextPath}/wmsappadmin/updateInspection.json",
+			type : "POST",
+			data: params,
+			success : function(result) {
+				if (result.resultCode == "success") {
+					location.href = "${pageContext.request.contextPath}/wmsappadmin/incomshoot.do"
 
-			} else {
-				alert(result.header.result_msg);
+				} else if (result.resultCode == "fail") {
+					alert(result.message);
+				} else {
+					alert(result.message);
+				}
 			}
 		});
 	}
 
 	function fn_make_barcode() {
-
-		fn_print_barcode("1234567890123");
-
-		return ;
-
 		var params = {
 			'product_id': '${inspection.product_id}'
 		}
