@@ -498,13 +498,9 @@ function fn_get_breath_status(val) {
 		return 'N';
 }
 
-    function fn_print_barcode(barcode) {
-
-		//window.open("http://118.36.28.145:8080/LabelPrinter.html?barcode=" + barcode);
-		//window.open("http://www.naver.com");
-
-		PrintBarcode(barcode);
-    }
+function fn_print_barcode(barcode) {
+    PrintBarcode(barcode);
+}
 
 var _inch = 2;
 var rotation = 3;
@@ -548,10 +544,10 @@ function PrintBarcode(barcode) {
 	requestPrint("Printer1", strSubmit, viewResult);
 }
 
-	function viewResult(result) {
-		console.log("PrintResult=" + result);
-		self.close();
-	}
+function viewResult(result) {
+    console.log("PrintResult=" + result);
+    self.close();
+}
 
 
 

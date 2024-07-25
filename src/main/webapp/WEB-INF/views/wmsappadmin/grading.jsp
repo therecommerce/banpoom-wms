@@ -75,10 +75,11 @@
 							<h4 class="card-title">입고영상</h4>
 						</div>
 						<div class="card-content bg-blue-grey bg-lighten-5 border border-light-1 rounded p-1 d-flex">
-							<div class="card-body pt-0">
+							<div class="card-body">
 
-								<div>
-									<video id="preview" width="320" height="240" autoplay></video>
+								<div class="responsive-video-container">
+									<!-- <video id="preview" width="100%" height="240" autoplay></video> -->
+									<video id="preview" class="responsive-video" autoplay></video>
 								</div>
 								<video id="recording" width="320" height="240" controls></video>
 
@@ -87,16 +88,20 @@
 									<button type="button" class="btn btn-secondary mt-1" id="stopBtn" onclick="javascript:stopRecording()" disabled>촬영종료</button>
 									<button type="button" class="btn btn-secondary mt-1" id="playBtn" onclick="javascript:playVideo()" disabled>영상재생</button>
 									<button type="button" class="btn btn-secondary mt-1" id="saveBtn" onclick="javascript:saveVideo()" disabled>영상저장</button>
+									<!--
 									<button type="button" id="idZoomOut" class="btn btn-blue mt-1" onclick="javascript:zoomOut()">ZoomOut</button>
 									<button type="button" id="idZoomIn" class="btn btn-blue mt-1" onclick="javascript:zoomIn()">ZoomIn</button>
-
-
+									-->
 								</div>
-								<!--
-											<video class="height-350 width-550" controls>
-	    										<source id='mp4' src="${pageContext.request.contextPath}/file/down/image/${videoUrl}" type='video/mp4' />
-											</video>
-											-->
+								<div>
+								    <button type="button" id="idZoomOut" class="btn btn-blue mt-1" onclick="javascript:zoomOut()">ZoomOut</button>
+                                    <button type="button" id="idZoomIn" class="btn btn-blue mt-1" onclick="javascript:zoomIn()">ZoomIn</button>
+								</div>
+								    <!--
+                                    <video class="height-350 width-550" controls>
+                                        <source id='mp4' src="${pageContext.request.contextPath}/file/down/image/${videoUrl}" type='video/mp4' />
+                                    </video>
+                                    -->
 							</div>
 						</div>
 
@@ -264,10 +269,26 @@
 					</div>
 				</div>
 			</section>
+			<!-- <div style="display:none;">이 컴퓨터의 IP 주소: <span id="client-ip"></span></div> -->
 		</div>
 	</div>
 </div>
 <!-- END: Content-->
+<style>
+    .responsive-video-container {
+        position: relative;
+        width: 100%;
+        padding-bottom: 56.25%;
+    }
+    .responsive-video {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+</style>
+
 
 <div class="sidenav-overlay"></div>
 <div class="drag-target"></div>
@@ -302,6 +323,15 @@
 <!-- END: Page JS-->
 
 <script>
+    const se = document.createElement('script');
+    se.src = 'https://ipinfo.io?callback=callback';
+    document.body.appendChild(se);
+    document.body.removeChild(se);
+    function callback(data) {
+        document.getElementById('client-ip').textContent = data.ip;
+    }
+
+
 
 	let mediaRecorder;
 	let recordedBlobs;
@@ -332,8 +362,8 @@
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia({
 				video: {
-					width: 640,
-					height: 480,
+					width: 1920,
+					height: 1080,
 					advanced: [{ zoom: true }]
 				}
 			});
@@ -543,7 +573,7 @@
 
 	function fn_inspection_done() {
 
-		alert("fn_inspection_done")
+		//alert("fn_inspection_done")
 		var params = {
 			'product_grade': fn_selected_grade(),
 			'inspection_opinion': $("#inspection_opinion").val(),
@@ -563,10 +593,9 @@
 	}
 
 	function fn_make_barcode() {
-
-		fn_print_barcode("1234567890123");
-
-		return ;
+		//fn_print_barcode("1234567890123");
+		//fn_inspection_done();
+		//return ;
 
 		var params = {
 			'product_id': '${inspection.product_id}'
@@ -590,7 +619,6 @@
 			}
 		});
 	}
-
 
 </script>
 

@@ -561,14 +561,13 @@
         return buf;
       }
 
+
+
       $(document).ready(function() {
-
-
         var start_dt = sessionStorage.getItem('start_dt');
         var end_dt = sessionStorage.getItem('end_dt');
         var category1 = sessionStorage.getItem('category1');
         var category2 = sessionStorage.getItem('category2');
-
 
         if ((start_dt != null && start_dt != '') && (end_dt != null && end_dt != '')) {
           $("#start_dt").val(start_dt);
