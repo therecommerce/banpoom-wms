@@ -503,7 +503,7 @@ public class ConsignmentController {
 
 				managerVO = managerService.selectManagerAuth(managerVO);
 
-				if (managerVO.isConsign_product_access() == false) {
+				if (managerVO != null && managerVO.isConsign_product_access() == false) {
 					return "redirect:/home.do";
 				} else {
 
@@ -561,7 +561,7 @@ public class ConsignmentController {
 
 				managerVO = managerService.selectManagerAuth(managerVO);
 
-				if (managerVO.isConsign_delivery_access() == false) {
+				if (managerVO != null && managerVO.isConsign_delivery_access() == false) {
 					return "redirect:/home.do";
 				} else {
 
@@ -803,7 +803,7 @@ public class ConsignmentController {
 
 				managerVO = managerService.selectManagerAuth(managerVO);
 
-				if (managerVO.isConsign_return_access() == false) {
+				if (managerVO != null && managerVO.isConsign_return_access() == false) {
 					return "redirect:/home.do";
 				} else {
 					DirectProductManagementVO returnCountVO = consignmentService.selectConsignmentReturnCount();
