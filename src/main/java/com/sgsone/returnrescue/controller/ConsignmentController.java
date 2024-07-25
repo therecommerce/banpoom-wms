@@ -99,10 +99,9 @@ public class ConsignmentController {
 
 				managerVO = managerService.selectManagerAuth(managerVO);
 
-				if (managerVO.isConsign_warehouse_access() == false) {
+				if (managerVO != null && managerVO.isConsign_warehouse_access() == false) {
 					return "redirect:/home.do";
 				} else {
-
 					ProductCountVO productCountVO = consignmentService.selectConsignmentProductCount();
 					modelVO.addAttribute("productCountVO", productCountVO);
 
